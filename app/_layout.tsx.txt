@@ -1,0 +1,52 @@
+import { DefaultTheme, ThemeProvider } from '@react-navigation/native';
+import { Stack, router, useSegments } from 'expo-router';
+import { StatusBar } from 'expo-status-bar';
+import { useEffect } from 'react';
+import 'react-native-reanimated';
+import { LocalAuthProvider, useLocalAuth } from '@/contexts/LocalAuthContext';
+
+export const unstable_settings = {
+  initialRouteName: 'login',
+};
+
+function RootLayoutNav() {
+  const { user, loading } = useLocalAuth();
+  const segments = useSegments();
+
+  useEffect(() => {
+    if (loading) return;
+
+    const inAuthGroup = segments[0] === '(tabs)';
+
+    if (!user && inAuthGroup) {
+      // Usuário não autenticado tentando acessar tabs protegidas
+      router.replace('/login');
+    } else if (user && !inAuthGroup) {
+      // Usuário autenticado na tela de login
+      router.replace('/(tabs)');
+    }
+  }, [user, loading, segments]);
+
+  return (
+    <Stack>
+      <Stack.Screen name="login" options={{ headerShown: false }} />
+      <Stack.Screen name="signup" options={{ headerShown: false }} />
+      <Stack.Screen name="(tabs)" options={{ headerShown: false }} />
+      <Stack.Screen
+        name="modal"
+        options={{ presentation: 'modal', title: 'Modal' }}
+      />
+    </Stack>
+  );
+}
+
+export default function RootLayout() {
+  return (
+    <LocalAuthProvider>
+      <ThemeProvider value={DefaultTheme}>
+        <RootLayoutNav />
+        <StatusBar style="dark" />
+      </ThemeProvider>
+    </LocalAuthProvider>
+  );
+}
