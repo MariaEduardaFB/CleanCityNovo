@@ -2,11 +2,25 @@ import { MaterialIcons } from '@expo/vector-icons';
 import { useFocusEffect } from '@react-navigation/native';
 import * as Location from 'expo-location';
 import { useCallback, useRef, useState } from 'react';
-import { Alert, StyleSheet, TouchableOpacity, View } from 'react-native';
-import MapView, { Callout, Marker, PROVIDER_DEFAULT } from 'react-native-maps';
+import { Alert, Platform, StyleSheet, TouchableOpacity, View } from 'react-native';
 
 import { ThemedText } from '@/components/themed-text';
+import { ThemedView } from '@/components/themed-view';
 import { getWasteLocations, WasteLocation } from '@/utils/storage';
+
+// Importação condicional do MapView (não funciona na web)
+let MapView: any;
+let Marker: any;
+let Callout: any;
+let PROVIDER_DEFAULT: any;
+
+if (Platform.OS !== 'web') {
+  const MapModule = require('react-native-maps');
+  MapView = MapModule.default;
+  Marker = MapModule.Marker;
+  Callout = MapModule.Callout;
+  PROVIDER_DEFAULT = MapModule.PROVIDER_DEFAULT;
+}
 
 export default function MapScreen() {
   const [wasteLocations, setWasteLocations] = useState<WasteLocation[]>([]);
@@ -15,7 +29,7 @@ export default function MapScreen() {
     latitude: number;
     longitude: number;
   } | null>(null);
-  const mapRef = useRef<MapView>(null);
+  const mapRef = useRef<any>(null);
 
   
   const getLocationName = (latitude: number, longitude: number): string => {
@@ -138,52 +152,53 @@ export default function MapScreen() {
         </View>
       </View>
 
-     
-      <MapView
-        ref={mapRef}
-        style={styles.fullscreenMap}
-        provider={PROVIDER_DEFAULT}
-        initialRegion={{
-          latitude: currentLocation?.latitude || -15.7935,
-          longitude: currentLocation?.longitude || -47.8828,
-          latitudeDelta: 0.02,
-          longitudeDelta: 0.02,
-        }}
-        showsUserLocation={true}
-        showsMyLocationButton={false}
-        followsUserLocation={false}
-        loadingEnabled={true}
-      >
-        {wasteLocations.map((item) => (
-          <Marker
-            key={item.id}
-            coordinate={{
-              latitude: item.location.latitude,
-              longitude: item.location.longitude,
-            }}
-            pinColor="#FF4444"
-          >
-            <Callout style={styles.calloutContainer}>
-              <View style={styles.calloutContent}>
-                <View style={styles.calloutHeader}>
-                  <MaterialIcons
-                    name="report-problem"
-                    size={20}
-                    color="#FF4444"
-                  />
-                  <ThemedText style={styles.calloutTitle} numberOfLines={2}>
-                    {item.description}
-                  </ThemedText>
-                </View>
-                <View style={styles.calloutDetails}>
-                  <View style={styles.calloutDetailRow}>
-                    <MaterialIcons size={14} color="#666" name="location-on" />
-                    <ThemedText style={styles.calloutDetailText}>
-                      {getLocationName(
-                        item.location.latitude,
-                        item.location.longitude
-                      )}
+      {/* Renderizar mapa apenas em plataformas nativas */}
+      {Platform.OS !== 'web' && MapView ? (
+        <MapView
+          ref={mapRef}
+          style={styles.fullscreenMap}
+          provider={PROVIDER_DEFAULT}
+          initialRegion={{
+            latitude: currentLocation?.latitude || -15.7935,
+            longitude: currentLocation?.longitude || -47.8828,
+            latitudeDelta: 0.02,
+            longitudeDelta: 0.02,
+          }}
+          showsUserLocation={true}
+          showsMyLocationButton={false}
+          followsUserLocation={false}
+          loadingEnabled={true}
+        >
+          {wasteLocations.map((item) => (
+            <Marker
+              key={item.id}
+              coordinate={{
+                latitude: item.location.latitude,
+                longitude: item.location.longitude,
+              }}
+              pinColor="#FF4444"
+            >
+              <Callout style={styles.calloutContainer}>
+                <View style={styles.calloutContent}>
+                  <View style={styles.calloutHeader}>
+                    <MaterialIcons
+                      name="report-problem"
+                      size={20}
+                      color="#FF4444"
+                    />
+                    <ThemedText style={styles.calloutTitle} numberOfLines={2}>
+                      {item.description}
                     </ThemedText>
+                  </View>
+                  <View style={styles.calloutDetails}>
+                    <View style={styles.calloutDetailRow}>
+                      <MaterialIcons size={14} color="#666" name="location-on" />
+                      <ThemedText style={styles.calloutDetailText}>
+                        {getLocationName(
+                          item.location.latitude,
+                          item.location.longitude
+                        )}
+                      </ThemedText>
                   </View>
                   <View style={styles.calloutDetailRow}>
                     <MaterialIcons size={14} color="#666" name="schedule" />
@@ -210,6 +225,19 @@ export default function MapScreen() {
           </Marker>
         ))}
       </MapView>
+      ) : (
+        <ThemedView style={styles.fullscreenMap}>
+          <ThemedView style={styles.webMapPlaceholder}>
+            <MaterialIcons size={64} name="map" color="#ccc" />
+            <ThemedText style={styles.webMapText}>
+              Mapa disponível apenas no app móvel
+            </ThemedText>
+            <ThemedText style={styles.webMapSubtext}>
+              {wasteLocations.length} locais registrados
+            </ThemedText>
+          </ThemedView>
+        </ThemedView>
+      )}
 
      
       <View style={styles.floatingButtons}>
@@ -512,5 +540,24 @@ const styles = StyleSheet.create({
     textAlign: 'center',
     lineHeight: 20,
     fontWeight: '500',
+  },
+  webMapPlaceholder: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+    backgroundColor: '#f5f5f5',
+  },
+  webMapText: {
+    marginTop: 16,
+    fontSize: 16,
+    color: '#666',
+    textAlign: 'center',
+    fontWeight: '600',
+  },
+  webMapSubtext: {
+    marginTop: 8,
+    fontSize: 14,
+    color: '#999',
+    textAlign: 'center',
   },
 });

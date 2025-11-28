@@ -6,12 +6,12 @@ import {
   Alert,
   Dimensions,
   FlatList,
+  Platform,
   RefreshControl,
   StyleSheet,
   TouchableOpacity,
   View,
 } from 'react-native';
-import MapView, { Marker, PROVIDER_DEFAULT } from 'react-native-maps';
 
 import { ThemedText } from '@/components/themed-text';
 import { ThemedView } from '@/components/themed-view';
@@ -21,6 +21,18 @@ import {
   WasteLocation,
 } from '@/utils/storage';
 
+// Importação condicional do MapView (não funciona na web)
+let MapView: any;
+let Marker: any;
+let PROVIDER_DEFAULT: any;
+
+if (Platform.OS !== 'web') {
+  const MapModule = require('react-native-maps');
+  MapView = MapModule.default;
+  Marker = MapModule.Marker;
+  PROVIDER_DEFAULT = MapModule.PROVIDER_DEFAULT;
+}
+
 export default function WasteLocationsScreen() {
   const [wasteLocations, setWasteLocations] = useState<WasteLocation[]>([]);
   const [viewMode, setViewMode] = useState<'list' | 'map'>('list');
@@ -29,7 +41,7 @@ export default function WasteLocationsScreen() {
     latitude: number;
     longitude: number;
   } | null>(null);
-  const mapRef = useRef<MapView>(null);
+  const mapRef = useRef<any>(null);
 
  
   const getLocationName = (latitude: number, longitude: number): string => {
@@ -196,37 +208,47 @@ export default function WasteLocationsScreen() {
 
   return (
     <View style={styles.container}>
-      
-      <MapView
-        ref={mapRef}
-        style={styles.backgroundMap}
-        provider={PROVIDER_DEFAULT}
-        initialRegion={{
-          
-          latitude: currentLocation?.latitude || -15.7935,
-          longitude: currentLocation?.longitude || -47.8828,
-          latitudeDelta: 0.02,
-          longitudeDelta: 0.02,
-        }}
-        showsUserLocation={true}
-        showsMyLocationButton={false}
-        followsUserLocation={false}
-        loadingEnabled={true}
-      >
-        {wasteLocations.map((item) => (
-          <Marker
-            key={item.id}
-            coordinate={{
-              latitude: item.location.latitude,
-              longitude: item.location.longitude,
-            }}
-            title={item.description}
-            description={`📅 ${new Date(item.timestamp).toLocaleDateString(
-              'pt-BR'
-            )}`}
-          />
-        ))}
-      </MapView>
+      {/* Renderizar mapa apenas em plataformas nativas */}
+      {Platform.OS !== 'web' && MapView ? (
+        <MapView
+          ref={mapRef}
+          style={styles.backgroundMap}
+          provider={PROVIDER_DEFAULT}
+          initialRegion={{
+            latitude: currentLocation?.latitude || -15.7935,
+            longitude: currentLocation?.longitude || -47.8828,
+            latitudeDelta: 0.02,
+            longitudeDelta: 0.02,
+          }}
+          showsUserLocation={true}
+          showsMyLocationButton={false}
+          followsUserLocation={false}
+          loadingEnabled={true}
+        >
+          {wasteLocations.map((item) => (
+            <Marker
+              key={item.id}
+              coordinate={{
+                latitude: item.location.latitude,
+                longitude: item.location.longitude,
+              }}
+              title={item.description}
+              description={`📅 ${new Date(item.timestamp).toLocaleDateString(
+                'pt-BR'
+              )}`}
+            />
+          ))}
+        </MapView>
+      ) : (
+        <ThemedView style={styles.backgroundMap}>
+          <ThemedView style={styles.webMapPlaceholder}>
+            <MaterialIcons size={64} name="map" color="#ccc" />
+            <ThemedText style={styles.webMapText}>
+              Mapa disponível apenas no app móvel
+            </ThemedText>
+          </ThemedView>
+        </ThemedView>
+      )}
 
       
       <TouchableOpacity
@@ -542,5 +564,17 @@ const styles = StyleSheet.create({
     shadowOpacity: 0.25,
     shadowRadius: 4,
     elevation: 5,
+  },
+  webMapPlaceholder: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+    backgroundColor: '#f5f5f5',
+  },
+  webMapText: {
+    marginTop: 16,
+    fontSize: 16,
+    color: '#666',
+    textAlign: 'center',
   },
 });
