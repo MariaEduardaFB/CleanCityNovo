@@ -35,6 +35,9 @@ const formatAccelerometer = (accel?: { x: number; y: number; z: number } | null)
 
 import { deleteWasteLocation, getWasteLocations, WasteLocation } from '@/utils/storage';
 import { styles } from './styles/explore.styles';
+import { SyncIndicator } from '@/components/SyncIndicator';
+import { useNetworkStatus } from '@/hooks/useNetworkStatus';
+import { getCache, setCache } from '@/services/cache.service';
 
 // Importação condicional do MapView (não funciona na web)
 let MapView: any;
@@ -57,6 +60,7 @@ export default function WasteLocationsScreen() {
     longitude: number;
   } | null>(null);
   const mapRef = useRef<any>(null);
+  const { isOnline } = useNetworkStatus();
 
  
   const getLocationName = (latitude: number, longitude: number): string => {
@@ -89,10 +93,25 @@ export default function WasteLocationsScreen() {
     try {
       setIsLoading(true);
       console.log('🔄 Carregando localizações...');
+      
+      // Tenta buscar do cache primeiro
+      const cacheKey = 'waste_locations_list';
+      const cachedData = await getCache<WasteLocation[]>(cacheKey);
+      
+      if (cachedData) {
+        console.log('✅ Dados carregados do cache');
+        setWasteLocations(cachedData);
+        setIsLoading(false);
+      }
+      
+      // Busca dados atualizados
       const locations = await getWasteLocations();
       console.log('📍 Localizações carregadas:', locations);
       console.log('📊 Total de localizações:', locations.length);
       setWasteLocations(locations);
+      
+      // Atualiza cache
+      await setCache(cacheKey, locations, 15); // 15 minutos
     } catch (error) {
       console.error('❌ Erro ao carregar localizações:', error);
     } finally {
@@ -360,6 +379,8 @@ export default function WasteLocationsScreen() {
             </TouchableOpacity>
           </ThemedView>
         </ThemedView>
+
+        <SyncIndicator onPress={loadWasteLocations} />
 
         {wasteLocations.length === 0 ? (
           <ThemedView style={styles.emptyContainer}>

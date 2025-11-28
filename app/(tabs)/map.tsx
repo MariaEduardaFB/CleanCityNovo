@@ -24,6 +24,8 @@ const formatAccelerometer = (acc?: Accelerometer): string => {
 };
 import { getWasteLocations, WasteLocation } from '@/utils/storage';
 import { styles } from './styles/map.styles';
+import { getCache, setCache } from '@/services/cache.service';
+import { useNetworkStatus } from '@/hooks/useNetworkStatus';
 
 // Importação condicional do MapView (não funciona na web)
 let MapView: any;
@@ -47,6 +49,7 @@ export default function MapScreen() {
     longitude: number;
   } | null>(null);
   const mapRef = useRef<any>(null);
+  const { isOnline } = useNetworkStatus();
 
   
   const getLocationName = (latitude: number, longitude: number): string => {
@@ -79,9 +82,24 @@ export default function MapScreen() {
     try {
       setIsLoading(true);
       console.log('🗺️ Carregando localizações para o mapa...');
+      
+      // Tenta buscar do cache primeiro
+      const cacheKey = 'waste_locations_map';
+      const cachedData = await getCache<WasteLocation[]>(cacheKey);
+      
+      if (cachedData) {
+        console.log('✅ Dados do mapa carregados do cache');
+        setWasteLocations(cachedData);
+        setIsLoading(false);
+      }
+      
+      // Busca dados atualizados
       const locations = await getWasteLocations();
       console.log('📍 Localizações carregadas no mapa:', locations.length);
       setWasteLocations(locations);
+      
+      // Atualiza cache
+      await setCache(cacheKey, locations, 15); // 15 minutos
     } catch (error) {
       console.error('❌ Erro ao carregar localizações no mapa:', error);
     } finally {

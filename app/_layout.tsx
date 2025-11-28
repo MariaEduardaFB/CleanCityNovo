@@ -4,6 +4,8 @@ import { StatusBar } from 'expo-status-bar';
 import { useEffect } from 'react';
 import 'react-native-reanimated';
 import { LocalAuthProvider, useLocalAuth } from '@/contexts/LocalAuthContext';
+import { initializeNetworkListener } from '@/services/network.service';
+import { NetworkIndicator } from '@/components/NetworkIndicator';
 
 export const unstable_settings = {
   initialRouteName: 'login',
@@ -12,6 +14,12 @@ export const unstable_settings = {
 function RootLayoutNav() {
   const { user, loading } = useLocalAuth();
   const segments = useSegments();
+
+  // Inicializa listener de rede
+  useEffect(() => {
+    const unsubscribe = initializeNetworkListener();
+    return unsubscribe;
+  }, []);
 
   useEffect(() => {
     if (loading) return;
@@ -28,15 +36,18 @@ function RootLayoutNav() {
   }, [user, loading, segments]);
 
   return (
-    <Stack>
-      <Stack.Screen name="login" options={{ headerShown: false }} />
-      <Stack.Screen name="signup" options={{ headerShown: false }} />
-      <Stack.Screen name="(tabs)" options={{ headerShown: false }} />
-      <Stack.Screen
-        name="modal"
-        options={{ presentation: 'modal', title: 'Modal' }}
-      />
-    </Stack>
+    <>
+      <NetworkIndicator />
+      <Stack>
+        <Stack.Screen name="login" options={{ headerShown: false }} />
+        <Stack.Screen name="signup" options={{ headerShown: false }} />
+        <Stack.Screen name="(tabs)" options={{ headerShown: false }} />
+        <Stack.Screen
+          name="modal"
+          options={{ presentation: 'modal', title: 'Modal' }}
+        />
+      </Stack>
+    </>
   );
 }
 
