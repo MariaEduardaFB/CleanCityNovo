@@ -33,11 +33,7 @@ const formatAccelerometer = (accel?: { x: number; y: number; z: number } | null)
   return `${magnitude.toFixed(2)} m/s²`;
 };
 
-import {
-  deleteWasteLocation,
-  getWasteLocations,
-  WasteLocation,
-} from '@/utils/storage';
+import { deleteWasteLocation, getWasteLocations, WasteLocation } from '@/utils/storage';
 import { styles } from './styles/explore.styles';
 
 // Importação condicional do MapView (não funciona na web)
@@ -152,7 +148,6 @@ export default function WasteLocationsScreen() {
     }
   }, []);
 
-  
   useFocusEffect(
     useCallback(() => {
       loadWasteLocations();

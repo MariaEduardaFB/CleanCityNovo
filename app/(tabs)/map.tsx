@@ -136,7 +136,6 @@ export default function MapScreen() {
     }
   }, []);
 
-  
   useFocusEffect(
     useCallback(() => {
       loadWasteLocations();

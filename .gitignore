@@ -4,3 +4,11 @@ node_modules/
 
 expo-env.d.ts
 # @end expo-cli
+
+# Firebase credentials
+.env
+.env.local
+config/firebase.ts
+
+# Firebase config (optional - remova se quiser committar o arquivo de config)
+# config/firebase.ts
