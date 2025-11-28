@@ -18,11 +18,63 @@ import {
 import MapView, { Marker, PROVIDER_DEFAULT } from 'react-native-maps';
 
 import { ThemedText } from '@/components/themed-text';
-import {
-  initializeNotifications,
-  showNotification,
-} from '@/utils/notifications';
-import { collectAllSensorData, type SensorData } from '@/utils/sensors';
+import * as Notifications from 'expo-notifications';
+type SensorData = {
+  noiseLevel: number | null;
+  lightLevel: number | null;
+  accelerometer:
+    | {
+        x: number;
+        y: number;
+        z: number;
+        magnitude: number;
+      }
+    | null;
+};
+
+const collectAllSensorData = async (): Promise<SensorData> => {
+  // Simple placeholder implementation: returns nulls for platforms without sensors.
+  // Extend this to use expo-sensors or other APIs as needed.
+  return {
+    noiseLevel: null,
+    lightLevel: null,
+    accelerometer: null,
+  };
+};
+
+const initializeNotifications = async () => {
+  try {
+    const { status } = await Notifications.getPermissionsAsync();
+    if (status !== 'granted') {
+      const { status: newStatus } = await Notifications.requestPermissionsAsync();
+      if (newStatus !== 'granted') return false;
+    }
+    Notifications.setNotificationHandler({
+      handleNotification: async () => ({
+        shouldShowAlert: true,
+        shouldShowBanner: true,
+        shouldShowList: true,
+        shouldPlaySound: false,
+        shouldSetBadge: false,
+      }),
+    });
+    return true;
+  } catch (err) {
+    console.error('Erro inicializando notificações:', err);
+    return false;
+  }
+};
+
+const showNotification = async (title: string, body?: string) => {
+  try {
+    await Notifications.scheduleNotificationAsync({
+      content: { title, body },
+      trigger: null,
+    });
+  } catch (err) {
+    console.error('Erro ao disparar notificação:', err);
+  }
+};
 import { saveWasteLocation } from '@/utils/storage';
 import { styles } from './styles/index.styles';
 

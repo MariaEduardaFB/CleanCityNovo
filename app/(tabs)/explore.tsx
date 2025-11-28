@@ -14,11 +14,25 @@ import {
 
 import { ThemedText } from '@/components/themed-text';
 import { ThemedView } from '@/components/themed-view';
-import {
-  formatNoiseLevel,
-  formatLightLevel,
-  formatAccelerometer,
-} from '@/utils/sensors';
+
+const formatNoiseLevel = (value?: number | null): string => {
+  if (value === null || value === undefined) return 'N/A';
+  // show one decimal and unit
+  return `${value.toFixed(1)} dB`;
+};
+
+const formatLightLevel = (value?: number | null): string => {
+  if (value === null || value === undefined) return 'N/A';
+  // round to integer lux
+  return `${Math.round(value)} lx`;
+};
+
+const formatAccelerometer = (accel?: { x: number; y: number; z: number } | null): string => {
+  if (!accel) return 'N/A';
+  const magnitude = Math.sqrt(accel.x * accel.x + accel.y * accel.y + accel.z * accel.z);
+  return `${magnitude.toFixed(2)} m/s²`;
+};
+
 import {
   deleteWasteLocation,
   getWasteLocations,

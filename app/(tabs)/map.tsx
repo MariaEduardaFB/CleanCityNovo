@@ -6,11 +6,22 @@ import { Alert, Platform, TouchableOpacity, View } from 'react-native';
 
 import { ThemedText } from '@/components/themed-text';
 import { ThemedView } from '@/components/themed-view';
-import {
-  formatNoiseLevel,
-  formatLightLevel,
-  formatAccelerometer,
-} from '@/utils/sensors';
+// Simple local sensor formatting helpers (inline to avoid unresolved path alias)
+const formatNoiseLevel = (value?: number | null): string => {
+  if (value === null || value === undefined) return 'N/A';
+  return `${value.toFixed(1)} dB`;
+};
+
+const formatLightLevel = (value?: number | null): string => {
+  if (value === null || value === undefined) return 'N/A';
+  return `${value.toFixed(1)} lx`;
+};
+
+type Accelerometer = { x: number; y: number; z: number } | null | undefined;
+const formatAccelerometer = (acc?: Accelerometer): string => {
+  if (!acc) return 'N/A';
+  return `x:${acc.x.toFixed(2)} y:${acc.y.toFixed(2)} z:${acc.z.toFixed(2)}`;
+};
 import { getWasteLocations, WasteLocation } from '@/utils/storage';
 import { styles } from './styles/map.styles';
 
