@@ -15,7 +15,7 @@ function RootLayoutNav() {
   const { user, loading } = useLocalAuth();
   const segments = useSegments();
 
-  // Inicializa listener de rede
+ 
   useEffect(() => {
     const unsubscribe = initializeNetworkListener();
     return unsubscribe;
@@ -27,7 +27,7 @@ function RootLayoutNav() {
     const inAuthGroup = segments[0] === '(tabs)';
 
     if (!user && inAuthGroup) {
-      // Usuário não autenticado tentando acessar tabs protegidas
+      
       router.replace('/login');
     } else if (user && !inAuthGroup) {
       // Usuário autenticado na tela de login
