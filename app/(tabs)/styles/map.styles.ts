@@ -251,4 +251,10 @@ export const styles = StyleSheet.create({
     color: '#999',
     textAlign: 'center',
   },
+  // Estilos para dados dos sensores
+  sensorDivider: {
+    height: 1,
+    backgroundColor: '#e9ecef',
+    marginVertical: 8,
+  },
 });

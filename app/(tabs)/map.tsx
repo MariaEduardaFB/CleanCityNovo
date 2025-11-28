@@ -6,6 +6,11 @@ import { Alert, Platform, TouchableOpacity, View } from 'react-native';
 
 import { ThemedText } from '@/components/themed-text';
 import { ThemedView } from '@/components/themed-view';
+import {
+  formatNoiseLevel,
+  formatLightLevel,
+  formatAccelerometer,
+} from '@/utils/sensors';
 import { getWasteLocations, WasteLocation } from '@/utils/storage';
 import { styles } from './styles/map.styles';
 
@@ -217,6 +222,35 @@ export default function MapScreen() {
                       <ThemedText style={styles.calloutDetailText}>
                         {item.photos.length} foto
                         {item.photos.length > 1 ? 's' : ''}
+                      </ThemedText>
+                    </View>
+                  )}
+                  
+                  {/* Dados dos Sensores */}
+                  {(item.noiseLevel || item.lightLevel || item.accelerometer) && (
+                    <View style={styles.sensorDivider} />
+                  )}
+                  {item.noiseLevel !== null && item.noiseLevel !== undefined && (
+                    <View style={styles.calloutDetailRow}>
+                      <MaterialIcons size={14} color="#2196F3" name="volume-up" />
+                      <ThemedText style={styles.calloutDetailText}>
+                        {formatNoiseLevel(item.noiseLevel)}
+                      </ThemedText>
+                    </View>
+                  )}
+                  {item.lightLevel !== null && item.lightLevel !== undefined && (
+                    <View style={styles.calloutDetailRow}>
+                      <MaterialIcons size={14} color="#FFC107" name="wb-sunny" />
+                      <ThemedText style={styles.calloutDetailText}>
+                        {formatLightLevel(item.lightLevel)}
+                      </ThemedText>
+                    </View>
+                  )}
+                  {item.accelerometer && (
+                    <View style={styles.calloutDetailRow}>
+                      <MaterialIcons size={14} color="#4CAF50" name="motion-photos-on" />
+                      <ThemedText style={styles.calloutDetailText}>
+                        {formatAccelerometer(item.accelerometer)}
                       </ThemedText>
                     </View>
                   )}

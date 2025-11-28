@@ -212,4 +212,17 @@ export const styles = StyleSheet.create({
     color: '#666',
     textAlign: 'center',
   },
+  // Estilos para dados dos sensores
+  sensorSection: {
+    marginTop: 12,
+    paddingTop: 12,
+    borderTopWidth: 1,
+    borderTopColor: '#e9ecef',
+  },
+  sensorSectionTitle: {
+    fontSize: 13,
+    fontWeight: '700',
+    color: '#495057',
+    marginBottom: 8,
+  },
 });

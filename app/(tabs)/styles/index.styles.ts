@@ -306,4 +306,42 @@ export const styles = StyleSheet.create({
     fontWeight: '700',
     letterSpacing: 0.5,
   },
+  // Estilos para botão desabilitado
+  photoButtonDisabled: {
+    opacity: 0.5,
+  },
+  photoButtonTextDisabled: {
+    color: '#999',
+  },
+  // Estilos para dados dos sensores
+  sensorDataContainer: {
+    marginTop: 12,
+    gap: 10,
+  },
+  sensorItem: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: '#f8f9fa',
+    padding: 12,
+    borderRadius: 8,
+    gap: 8,
+  },
+  sensorLabel: {
+    fontSize: 14,
+    color: '#555',
+    fontWeight: '600',
+    flex: 1,
+  },
+  sensorValue: {
+    fontSize: 14,
+    color: '#1a1a1a',
+    fontWeight: '700',
+  },
+  noSensorData: {
+    fontSize: 13,
+    color: '#999',
+    fontStyle: 'italic',
+    textAlign: 'center',
+    padding: 12,
+  },
 });

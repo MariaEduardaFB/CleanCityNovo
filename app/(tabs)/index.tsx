@@ -22,6 +22,7 @@ import {
   initializeNotifications,
   showNotification,
 } from '@/utils/notifications';
+import { collectAllSensorData, type SensorData } from '@/utils/sensors';
 import { saveWasteLocation } from '@/utils/storage';
 import { styles } from './styles/index.styles';
 
@@ -37,6 +38,8 @@ export default function HomeScreen() {
   const [isEditingLocation, setIsEditingLocation] = useState(false);
   const [customLatitude, setCustomLatitude] = useState('');
   const [customLongitude, setCustomLongitude] = useState('');
+  const [sensorData, setSensorData] = useState<SensorData | null>(null);
+  const [isCollectingSensors, setIsCollectingSensors] = useState(false);
 
   const initialPanelHeight = Math.max(Dimensions.get('window').height * 0.4, 300);
   const expandedPanelHeight = Dimensions.get('window').height - 120;
@@ -192,6 +195,21 @@ export default function HomeScreen() {
     })();
   }, []);
 
+  const collectSensors = async () => {
+    setIsCollectingSensors(true);
+    try {
+      const data = await collectAllSensorData();
+      setSensorData(data);
+      console.log('🌡️ Dados dos sensores coletados:', data);
+      return data;
+    } catch (error) {
+      console.error('Erro ao coletar sensores:', error);
+      return null;
+    } finally {
+      setIsCollectingSensors(false);
+    }
+  };
+
   const takePhoto = async () => {
     const { status } = await ImagePicker.requestCameraPermissionsAsync();
 
@@ -230,11 +248,16 @@ export default function HomeScreen() {
       : location;
 
     try {
+      // Coletar dados dos sensores antes de salvar
+      const sensors = await collectSensors();
       
       await saveWasteLocation({
         description: description.trim(),
         photos,
         location: finalLocation!,
+        noiseLevel: sensors?.noiseLevel ?? null,
+        lightLevel: sensors?.lightLevel ?? null,
+        accelerometer: sensors?.accelerometer ?? null,
       });
 
       
@@ -255,6 +278,7 @@ export default function HomeScreen() {
       setIsEditingLocation(false);
       setCustomLatitude('');
       setCustomLongitude('');
+      setSensorData(null);
     } catch (error) {
       Alert.alert('Erro', 'Não foi possível salvar o local. Tente novamente.');
       console.error('Erro ao salvar:', error);
@@ -429,6 +453,68 @@ export default function HomeScreen() {
                     </View>
                   ))}
                 </ScrollView>
+              </View>
+            )}
+          </View>
+
+          {/* Card de Sensores Ambientais */}
+          <View style={styles.photoCard}>
+            <View style={styles.cardHeader}>
+              <MaterialIcons name="sensors" size={24} color="#FF9800" />
+              <ThemedText style={styles.cardTitle}>
+                Dados Ambientais
+              </ThemedText>
+            </View>
+
+            <TouchableOpacity 
+              style={[styles.photoButton, isCollectingSensors && styles.photoButtonDisabled]} 
+              onPress={collectSensors}
+              disabled={isCollectingSensors}
+            >
+              <MaterialIcons 
+                size={24} 
+                color={isCollectingSensors ? "#999" : "#FF9800"} 
+                name={isCollectingSensors ? "hourglass-empty" : "sensors"} 
+              />
+              <ThemedText style={[styles.photoButtonText, isCollectingSensors && styles.photoButtonTextDisabled]}>
+                {isCollectingSensors ? 'Coletando...' : 'Coletar Dados dos Sensores'}
+              </ThemedText>
+            </TouchableOpacity>
+
+            {sensorData && (
+              <View style={styles.sensorDataContainer}>
+                {sensorData.noiseLevel !== null && (
+                  <View style={styles.sensorItem}>
+                    <MaterialIcons name="volume-up" size={20} color="#2196F3" />
+                    <ThemedText style={styles.sensorLabel}>Ruído:</ThemedText>
+                    <ThemedText style={styles.sensorValue}>
+                      {sensorData.noiseLevel} dB
+                    </ThemedText>
+                  </View>
+                )}
+                {sensorData.lightLevel !== null && (
+                  <View style={styles.sensorItem}>
+                    <MaterialIcons name="wb-sunny" size={20} color="#FFC107" />
+                    <ThemedText style={styles.sensorLabel}>Luminosidade:</ThemedText>
+                    <ThemedText style={styles.sensorValue}>
+                      {sensorData.lightLevel} lux
+                    </ThemedText>
+                  </View>
+                )}
+                {sensorData.accelerometer && (
+                  <View style={styles.sensorItem}>
+                    <MaterialIcons name="motion-photos-on" size={20} color="#4CAF50" />
+                    <ThemedText style={styles.sensorLabel}>Movimento:</ThemedText>
+                    <ThemedText style={styles.sensorValue}>
+                      {sensorData.accelerometer.magnitude.toFixed(2)}g
+                    </ThemedText>
+                  </View>
+                )}
+                {!sensorData.noiseLevel && !sensorData.lightLevel && !sensorData.accelerometer && (
+                  <ThemedText style={styles.noSensorData}>
+                    Nenhum dado coletado dos sensores
+                  </ThemedText>
+                )}
               </View>
             )}
           </View>

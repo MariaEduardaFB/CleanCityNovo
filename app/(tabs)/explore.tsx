@@ -15,6 +15,11 @@ import {
 import { ThemedText } from '@/components/themed-text';
 import { ThemedView } from '@/components/themed-view';
 import {
+  formatNoiseLevel,
+  formatLightLevel,
+  formatAccelerometer,
+} from '@/utils/sensors';
+import {
   deleteWasteLocation,
   getWasteLocations,
   WasteLocation,
@@ -201,6 +206,39 @@ export default function WasteLocationsScreen() {
           <ThemedText style={styles.photoCount}>
             {item.photos.length} foto{item.photos.length > 1 ? 's' : ''}
           </ThemedText>
+        </ThemedView>
+      )}
+
+      {/* Dados dos Sensores */}
+      {(item.noiseLevel || item.lightLevel || item.accelerometer) && (
+        <ThemedView style={styles.sensorSection}>
+          <ThemedText style={styles.sensorSectionTitle}>
+            📊 Dados Ambientais
+          </ThemedText>
+          {item.noiseLevel !== null && item.noiseLevel !== undefined && (
+            <ThemedView style={styles.detailRow}>
+              <MaterialIcons size={16} color="#2196F3" name="volume-up" />
+              <ThemedText style={styles.detailText}>
+                {formatNoiseLevel(item.noiseLevel)}
+              </ThemedText>
+            </ThemedView>
+          )}
+          {item.lightLevel !== null && item.lightLevel !== undefined && (
+            <ThemedView style={styles.detailRow}>
+              <MaterialIcons size={16} color="#FFC107" name="wb-sunny" />
+              <ThemedText style={styles.detailText}>
+                {formatLightLevel(item.lightLevel)}
+              </ThemedText>
+            </ThemedView>
+          )}
+          {item.accelerometer && (
+            <ThemedView style={styles.detailRow}>
+              <MaterialIcons size={16} color="#4CAF50" name="motion-photos-on" />
+              <ThemedText style={styles.detailText}>
+                {formatAccelerometer(item.accelerometer)}
+              </ThemedText>
+            </ThemedView>
+          )}
         </ThemedView>
       )}
     </ThemedView>
