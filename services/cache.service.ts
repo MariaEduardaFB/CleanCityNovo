@@ -16,9 +16,6 @@ export interface CacheMetadata {
   };
 }
 
-/**
- * Salva dados no cache com TTL (Time To Live)
- */
 export async function setCache<T>(
   key: string,
   data: T,
@@ -35,7 +32,6 @@ export async function setCache<T>(
     const cacheKey = `${CACHE_PREFIX}${key}`;
     await AsyncStorage.setItem(cacheKey, JSON.stringify(cacheEntry));
 
-    // Atualiza metadata
     await updateCacheMetadata(key, JSON.stringify(cacheEntry).length);
 
     console.log(`💾 Cache salvo: ${key} (${ttlMinutes}min TTL)`);
@@ -44,9 +40,6 @@ export async function setCache<T>(
   }
 }
 
-/**
- * Busca dados do cache
- */
 export async function getCache<T>(key: string): Promise<T | null> {
   try {
     const cacheKey = `${CACHE_PREFIX}${key}`;
@@ -60,14 +53,12 @@ export async function getCache<T>(key: string): Promise<T | null> {
     const cacheEntry: CacheEntry<T> = JSON.parse(cached);
     const now = Date.now();
 
-    // Verifica se expirou
     if (now > cacheEntry.expiresAt) {
       console.log(`⏰ Cache expirado: ${key}`);
       await deleteCache(key);
       return null;
     }
 
-    // Atualiza último acesso
     await updateCacheMetadata(key, cached.length);
 
     console.log(`✅ Cache hit: ${key}`);
@@ -78,9 +69,6 @@ export async function getCache<T>(key: string): Promise<T | null> {
   }
 }
 
-/**
- * Deleta entrada do cache
- */
 export async function deleteCache(key: string): Promise<void> {
   try {
     const cacheKey = `${CACHE_PREFIX}${key}`;
@@ -92,9 +80,6 @@ export async function deleteCache(key: string): Promise<void> {
   }
 }
 
-/**
- * Limpa todo o cache
- */
 export async function clearAllCache(): Promise<void> {
   try {
     const keys = await AsyncStorage.getAllKeys();
@@ -109,9 +94,6 @@ export async function clearAllCache(): Promise<void> {
   }
 }
 
-/**
- * Verifica se cache existe e é válido
- */
 export async function isCacheValid(key: string): Promise<boolean> {
   try {
     const cacheKey = `${CACHE_PREFIX}${key}`;
@@ -128,9 +110,6 @@ export async function isCacheValid(key: string): Promise<boolean> {
   }
 }
 
-/**
- * Atualiza metadata do cache
- */
 async function updateCacheMetadata(key: string, size: number): Promise<void> {
   try {
     const metadataJson = await AsyncStorage.getItem(CACHE_METADATA_KEY);
@@ -147,9 +126,6 @@ async function updateCacheMetadata(key: string, size: number): Promise<void> {
   }
 }
 
-/**
- * Remove metadata do cache
- */
 async function removeCacheMetadata(key: string): Promise<void> {
   try {
     const metadataJson = await AsyncStorage.getItem(CACHE_METADATA_KEY);
@@ -164,9 +140,6 @@ async function removeCacheMetadata(key: string): Promise<void> {
   }
 }
 
-/**
- * Obtém estatísticas do cache
- */
 export async function getCacheStats(): Promise<{
   entries: number;
   totalSize: number;
@@ -193,9 +166,6 @@ export async function getCacheStats(): Promise<{
   }
 }
 
-/**
- * Limpa cache antigo (LRU - Least Recently Used)
- */
 export async function cleanOldCache(maxAgeMinutes: number = 60): Promise<void> {
   try {
     const metadataJson = await AsyncStorage.getItem(CACHE_METADATA_KEY);

@@ -21,9 +21,6 @@ export interface QueueStats {
   lastProcessed: number | null;
 }
 
-/**
- * Adiciona item à fila offline
- */
 export async function addToQueue(
   type: QueueItem['type'],
   collection: string,
@@ -52,9 +49,6 @@ export async function addToQueue(
   }
 }
 
-/**
- * Obtém a fila atual
- */
 export async function getQueue(): Promise<QueueItem[]> {
   try {
     const queueJson = await AsyncStorage.getItem(QUEUE_KEY);
@@ -65,9 +59,6 @@ export async function getQueue(): Promise<QueueItem[]> {
   }
 }
 
-/**
- * Salva a fila
- */
 async function saveQueue(queue: QueueItem[]): Promise<void> {
   try {
     await AsyncStorage.setItem(QUEUE_KEY, JSON.stringify(queue));
@@ -76,9 +67,6 @@ async function saveQueue(queue: QueueItem[]): Promise<void> {
   }
 }
 
-/**
- * Remove item da fila
- */
 export async function removeFromQueue(id: string): Promise<void> {
   try {
     const queue = await getQueue();
@@ -90,9 +78,6 @@ export async function removeFromQueue(id: string): Promise<void> {
   }
 }
 
-/**
- * Limpa toda a fila
- */
 export async function clearQueue(): Promise<void> {
   try {
     await AsyncStorage.setItem(QUEUE_KEY, JSON.stringify([]));
@@ -102,9 +87,6 @@ export async function clearQueue(): Promise<void> {
   }
 }
 
-/**
- * Marca item como com erro
- */
 export async function markQueueItemError(id: string, error: string): Promise<void> {
   try {
     const queue = await getQueue();
@@ -121,28 +103,22 @@ export async function markQueueItemError(id: string, error: string): Promise<voi
   }
 }
 
-/**
- * Processa a fila offline
- */
 export async function processQueue(
   processor: (item: QueueItem) => Promise<void>
 ): Promise<{ success: number; failed: number }> {
   try {
-    // Verifica se já está processando
     const isProcessing = await AsyncStorage.getItem(QUEUE_PROCESSING_KEY);
     if (isProcessing === 'true') {
       console.log('⚠️ Fila já está sendo processada');
       return { success: 0, failed: 0 };
     }
 
-    // Verifica conexão
     const online = await isOnline();
     if (!online) {
       console.log('⚠️ Sem conexão, processamento adiado');
       return { success: 0, failed: 0 };
     }
 
-    // Marca como processando
     await AsyncStorage.setItem(QUEUE_PROCESSING_KEY, 'true');
 
     const queue = await getQueue();
@@ -152,7 +128,6 @@ export async function processQueue(
     console.log(`🔄 Processando ${queue.length} itens da fila...`);
 
     for (const item of queue) {
-      // Pula itens que falharam muitas vezes
       if (item.retries >= 3) {
         console.log(`⏭️ Pulando item com muitas falhas: ${item.id}`);
         failedCount++;
@@ -171,7 +146,6 @@ export async function processQueue(
       }
     }
 
-    // Remove marca de processamento
     await AsyncStorage.setItem(QUEUE_PROCESSING_KEY, 'false');
 
     console.log(`📊 Processamento concluído: ${successCount} sucesso, ${failedCount} falhas`);
@@ -183,9 +157,6 @@ export async function processQueue(
   }
 }
 
-/**
- * Obtém estatísticas da fila
- */
 export async function getQueueStats(): Promise<QueueStats> {
   try {
     const queue = await getQueue();
@@ -214,9 +185,6 @@ export async function getQueueStats(): Promise<QueueStats> {
   }
 }
 
-/**
- * Remove itens antigos da fila (mais de 7 dias)
- */
 export async function cleanOldQueueItems(): Promise<void> {
   try {
     const queue = await getQueue();

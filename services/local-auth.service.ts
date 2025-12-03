@@ -9,43 +9,35 @@ export interface LocalUser {
   displayName: string;
   password: string; // Hash em produção real
   createdAt: string;
-  isAdmin?: boolean; // Flag de administrador
+  isAdmin?: boolean;
 }
 
-/**
- * Cria novo usuário local
- */
 export async function signUpLocal(
   email: string,
   password: string,
   displayName: string
 ): Promise<LocalUser> {
   try {
-    // Busca usuários existentes
     const usersJson = await AsyncStorage.getItem(USERS_KEY);
     const users: LocalUser[] = usersJson ? JSON.parse(usersJson) : [];
 
-    // Verifica se email já existe
     const existingUser = users.find(u => u.email === email);
     if (existingUser) {
       throw new Error('Este email já está cadastrado');
     }
 
-    // Cria novo usuário
     const newUser: LocalUser = {
       uid: `local_${Date.now()}`,
       email: email.trim().toLowerCase(),
       displayName: displayName.trim(),
-      password, // Em produção, usar hash (bcrypt)
+      password,
       createdAt: new Date().toISOString(),
-      isAdmin: email.trim().toLowerCase() === 'admin@cleancity.com', // Primeiro usuário admin
+      isAdmin: email.trim().toLowerCase() === 'admin@cleancity.com',
     };
 
-    // Salva usuário
     users.push(newUser);
     await AsyncStorage.setItem(USERS_KEY, JSON.stringify(users));
 
-    // Define como usuário atual
     await AsyncStorage.setItem(CURRENT_USER_KEY, JSON.stringify(newUser));
 
     console.log('✅ Usuário criado:', newUser.email);
@@ -56,19 +48,14 @@ export async function signUpLocal(
   }
 }
 
-/**
- * Faz login local
- */
 export async function signInLocal(
   email: string,
   password: string
 ): Promise<LocalUser> {
   try {
-    // Busca usuários
     const usersJson = await AsyncStorage.getItem(USERS_KEY);
     const users: LocalUser[] = usersJson ? JSON.parse(usersJson) : [];
 
-    // Busca usuário por email
     const user = users.find(
       u => u.email === email.trim().toLowerCase() && u.password === password
     );
@@ -77,7 +64,6 @@ export async function signInLocal(
       throw new Error('Email ou senha incorretos');
     }
 
-    // Define como usuário atual
     await AsyncStorage.setItem(CURRENT_USER_KEY, JSON.stringify(user));
 
     console.log('✅ Login realizado:', user.email);
@@ -88,9 +74,6 @@ export async function signInLocal(
   }
 }
 
-/**
- * Desloga usuário
- */
 export async function signOutLocal(): Promise<void> {
   try {
     await AsyncStorage.removeItem(CURRENT_USER_KEY);
@@ -101,9 +84,6 @@ export async function signOutLocal(): Promise<void> {
   }
 }
 
-/**
- * Obtém usuário atual
- */
 export async function getCurrentUserLocal(): Promise<LocalUser | null> {
   try {
     const userJson = await AsyncStorage.getItem(CURRENT_USER_KEY);
@@ -114,9 +94,6 @@ export async function getCurrentUserLocal(): Promise<LocalUser | null> {
   }
 }
 
-/**
- * Observa mudanças no usuário
- */
 export function onAuthStateChangeLocal(
   callback: (user: LocalUser | null) => void
 ): () => void {
@@ -127,21 +104,15 @@ export function onAuthStateChangeLocal(
     callback(user);
   };
 
-  // Verifica imediatamente
   checkUser();
 
-  // Verifica a cada 1 segundo (pode ser otimizado)
   interval = setInterval(checkUser, 1000);
 
-  // Retorna função de cleanup
   return () => {
     if (interval) clearInterval(interval);
   };
 }
 
-/**
- * Lista todos os usuários (para debug)
- */
 export async function getAllUsersLocal(): Promise<LocalUser[]> {
   try {
     const usersJson = await AsyncStorage.getItem(USERS_KEY);
@@ -152,9 +123,6 @@ export async function getAllUsersLocal(): Promise<LocalUser[]> {
   }
 }
 
-/**
- * Deleta conta do usuário
- */
 export async function deleteUserLocal(uid: string): Promise<void> {
   try {
     const usersJson = await AsyncStorage.getItem(USERS_KEY);
@@ -163,7 +131,6 @@ export async function deleteUserLocal(uid: string): Promise<void> {
     const updatedUsers = users.filter(u => u.uid !== uid);
     await AsyncStorage.setItem(USERS_KEY, JSON.stringify(updatedUsers));
 
-    // Se for o usuário atual, desloga
     const currentUser = await getCurrentUserLocal();
     if (currentUser?.uid === uid) {
       await signOutLocal();

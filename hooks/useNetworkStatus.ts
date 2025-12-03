@@ -13,10 +13,8 @@ export function useNetworkStatus() {
   });
 
   useEffect(() => {
-    // Obtém status inicial
     getNetworkStatus().then(setStatus);
 
-    // Adiciona listener
     const unsubscribe = addNetworkListener(setStatus);
 
     return unsubscribe;

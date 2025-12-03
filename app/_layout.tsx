@@ -3,7 +3,7 @@ import { Stack, router, useSegments } from 'expo-router';
 import { StatusBar } from 'expo-status-bar';
 import { useEffect } from 'react';
 import 'react-native-reanimated';
-import { LocalAuthProvider, useLocalAuth } from '@/contexts/LocalAuthContext';
+import { AuthProvider, useAuth } from '@/contexts/AuthContext';
 import { initializeNetworkListener } from '@/services/network.service';
 import { NetworkIndicator } from '@/components/NetworkIndicator';
 
@@ -12,7 +12,7 @@ export const unstable_settings = {
 };
 
 function RootLayoutNav() {
-  const { user, loading } = useLocalAuth();
+  const { user, loading } = useAuth();
   const segments = useSegments();
 
  
@@ -53,11 +53,11 @@ function RootLayoutNav() {
 
 export default function RootLayout() {
   return (
-    <LocalAuthProvider>
+    <AuthProvider>
       <ThemeProvider value={DefaultTheme}>
         <RootLayoutNav />
         <StatusBar style="dark" />
       </ThemeProvider>
-    </LocalAuthProvider>
+    </AuthProvider>
   );
 }

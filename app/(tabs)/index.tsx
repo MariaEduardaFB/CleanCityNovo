@@ -33,13 +33,108 @@ type SensorData = {
 };
 
 const collectAllSensorData = async (): Promise<SensorData> => {
-  // Simple placeholder implementation: returns nulls for platforms without sensors.
-  // Extend this to use expo-sensors or other APIs as needed.
-  return {
-    noiseLevel: null,
-    lightLevel: null,
-    accelerometer: null,
-  };
+  try {
+    // Importa os sensores dinamicamente
+    const { Accelerometer, LightSensor, Gyroscope, Magnetometer } = await import('expo-sensors');
+    
+    const sensorData: SensorData = {
+      noiseLevel: null, // Ruído requer permissões de microfone
+      lightLevel: null,
+      accelerometer: null,
+    };
+
+    console.log('🔍 Iniciando coleta de sensores...');
+
+    // Coleta dados do acelerômetro
+    try {
+      const isAvailable = await Accelerometer.isAvailableAsync();
+      console.log('📱 Acelerômetro disponível:', isAvailable);
+      
+      if (isAvailable) {
+        const subscription = Accelerometer.addListener((data) => {
+          const magnitude = Math.sqrt(data.x ** 2 + data.y ** 2 + data.z ** 2);
+          sensorData.accelerometer = {
+            x: parseFloat(data.x.toFixed(3)),
+            y: parseFloat(data.y.toFixed(3)),
+            z: parseFloat(data.z.toFixed(3)),
+            magnitude: parseFloat(magnitude.toFixed(3)),
+          };
+        });
+        
+        await new Promise(resolve => setTimeout(resolve, 500));
+        subscription.remove();
+        console.log('✅ Acelerômetro:', sensorData.accelerometer);
+      }
+    } catch (error) {
+      console.error('❌ Erro ao coletar acelerômetro:', error);
+    }
+
+    // Coleta dados do giroscópio (rotação do dispositivo)
+    try {
+      const isAvailable = await Gyroscope.isAvailableAsync();
+      console.log('🌀 Giroscópio disponível:', isAvailable);
+      
+      if (isAvailable) {
+        let gyroData = { x: 0, y: 0, z: 0 };
+        const subscription = Gyroscope.addListener((data) => {
+          gyroData = data;
+        });
+        
+        await new Promise(resolve => setTimeout(resolve, 500));
+        subscription.remove();
+        console.log('✅ Giroscópio:', gyroData);
+      }
+    } catch (error) {
+      console.error('❌ Erro ao coletar giroscópio:', error);
+    }
+
+    // Coleta dados do magnetômetro (campo magnético/bússola)
+    try {
+      const isAvailable = await Magnetometer.isAvailableAsync();
+      console.log('🧲 Magnetômetro disponível:', isAvailable);
+      
+      if (isAvailable) {
+        let magData = { x: 0, y: 0, z: 0 };
+        const subscription = Magnetometer.addListener((data) => {
+          magData = data;
+        });
+        
+        await new Promise(resolve => setTimeout(resolve, 500));
+        subscription.remove();
+        console.log('✅ Magnetômetro:', magData);
+      }
+    } catch (error) {
+      console.error('❌ Erro ao coletar magnetômetro:', error);
+    }
+
+    // Coleta dados do sensor de luz
+    try {
+      const isAvailable = await LightSensor.isAvailableAsync();
+      console.log('💡 Sensor de luz disponível:', isAvailable);
+      
+      if (isAvailable) {
+        const subscription = LightSensor.addListener((data) => {
+          sensorData.lightLevel = parseFloat(data.illuminance.toFixed(2));
+        });
+        
+        await new Promise(resolve => setTimeout(resolve, 500));
+        subscription.remove();
+        console.log('✅ Sensor de luz:', sensorData.lightLevel);
+      }
+    } catch (error) {
+      console.error('❌ Erro ao coletar sensor de luz:', error);
+    }
+
+    console.log('📊 Resumo dos sensores coletados:', sensorData);
+    return sensorData;
+  } catch (error) {
+    console.error('❌ Erro geral ao importar/coletar sensores:', error);
+    return {
+      noiseLevel: null,
+      lightLevel: null,
+      accelerometer: null,
+    };
+  }
 };
 
 const initializeNotifications = async () => {
@@ -76,6 +171,7 @@ const showNotification = async (title: string, body?: string) => {
   }
 };
 import { saveWasteLocation } from '@/utils/storage';
+import { useOccurrences } from '@/hooks/useOccurrences';
 import { styles } from './styles/index.styles';
 
 interface LocationData {
@@ -84,6 +180,7 @@ interface LocationData {
 }
 
 export default function HomeScreen() {
+  const { createOccurrence } = useOccurrences();
   const [description, setDescription] = useState('');
   const [photos, setPhotos] = useState<string[]>([]);
   const [location, setLocation] = useState<LocationData | null>(null);
@@ -300,9 +397,51 @@ export default function HomeScreen() {
       : location;
 
     try {
-      // Coletar dados dos sensores antes de salvar
+      // Criar ocorrência na API
+      const occurrence = await createOccurrence({
+        title: 'Registro de Resíduo',
+        description: description.trim() || 'Sem descrição',
+        latitude: finalLocation!.latitude,
+        longitude: finalLocation!.longitude,
+        category: 'TRASH',
+      });
+
+      if (!occurrence) {
+        Alert.alert('Erro', 'Não foi possível criar a ocorrência');
+        return;
+      }
+
+      console.log('✅ Ocorrência criada com sucesso:', occurrence.id);
+
+      // Fazer upload das fotos se houver
+      if (photos.length > 0) {
+        console.log(`📸 Fazendo upload de ${photos.length} foto(s)...`);
+        const { photoApiService } = await import('@/services/photo-api.service');
+        
+        for (let i = 0; i < photos.length; i++) {
+          try {
+            const photoUri = photos[i];
+            const fileName = `photo_${Date.now()}_${i}.jpg`;
+            
+            const result = await photoApiService.uploadPhoto(occurrence.id, {
+              uri: photoUri,
+              name: fileName,
+              type: 'image/jpeg',
+            });
+            
+            if (result.success) {
+              console.log(`✅ Foto ${i + 1} enviada com sucesso`);
+            } else {
+              console.error(`❌ Erro ao enviar foto ${i + 1}:`, result.error);
+            }
+          } catch (photoError) {
+            console.error(`❌ Exceção ao enviar foto ${i + 1}:`, photoError);
+          }
+        }
+      }
+
+      // Também salvar localmente para funcionar offline
       const sensors = await collectSensors();
-      
       await saveWasteLocation({
         description: description.trim(),
         photos,
@@ -312,7 +451,6 @@ export default function HomeScreen() {
         accelerometer: sensors?.accelerometer ?? null,
       });
 
-      
       try {
         await showNotification(
           'Registro enviado',
@@ -322,7 +460,7 @@ export default function HomeScreen() {
         console.error('Erro ao disparar notificação:', notifyError);
       }
 
-      Alert.alert('Sucesso', 'Local registrado com sucesso!');
+      Alert.alert('Sucesso', 'Ocorrência registrada com sucesso!');
 
      
       setDescription('');

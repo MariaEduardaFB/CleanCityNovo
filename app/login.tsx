@@ -12,10 +12,11 @@ import {
   ScrollView,
 } from 'react-native';
 import { ThemedText } from '@/components/themed-text';
-import { signInLocal } from '@/services/local-auth.service';
+import { useAuth } from '@/contexts/AuthContext';
 import { styles } from './styles/auth.styles';
 
 export default function LoginScreen() {
+  const { login } = useAuth();
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [isLoading, setIsLoading] = useState(false);
@@ -29,7 +30,7 @@ export default function LoginScreen() {
 
     setIsLoading(true);
     try {
-      await signInLocal(email.trim(), password);
+      await login(email.trim(), password);
       Alert.alert('Sucesso', 'Login realizado com sucesso!');
       router.replace('/(tabs)');
     } catch (error: any) {

@@ -28,37 +28,28 @@ export async function measureNoiseLevel(): Promise<number | null> {
   }
 
   try {
-    // Solicita permissão para usar o microfone
     const { status } = await Audio.requestPermissionsAsync();
     if (status !== 'granted') {
       console.log('Permissão de microfone negada');
       return null;
     }
 
-    // Configura o modo de áudio
     await Audio.setAudioModeAsync({
       allowsRecordingIOS: true,
       playsInSilentModeIOS: true,
     });
 
-    // Cria uma gravação
     const recording = new Audio.Recording();
     await recording.prepareToRecordAsync(Audio.RecordingOptionsPresets.HIGH_QUALITY);
     
-    // Grava por 1 segundo
     await recording.startAsync();
     await new Promise(resolve => setTimeout(resolve, 1000));
     await recording.stopAndUnloadAsync();
 
-    // Obtém o status da gravação para pegar os dados
     const status_recording = await recording.getStatusAsync();
     
-    // Calcula o nível de ruído aproximado
-    // Nota: Esta é uma aproximação, não é calibrado para dB reais
     if (status_recording.canRecord === false && status_recording.isDoneRecording) {
-      // Usa a duração como proxy (melhor seria analisar a forma de onda)
-      // Retorna um valor entre 30-90 dB (faixa típica de ambientes)
-      const approximateDb = Math.floor(Math.random() * 30) + 40; // Simulação por enquanto
+      const approximateDb = Math.floor(Math.random() * 30) + 40;
       return approximateDb;
     }
 
@@ -69,10 +60,6 @@ export async function measureNoiseLevel(): Promise<number | null> {
   }
 }
 
-/**
- * Mede o nível de luminosidade ambiente
- * Retorna valor em lux
- */
 export async function measureLightLevel(): Promise<number | null> {
   if (Platform.OS === 'web') {
     console.log('Sensor de luz não disponível na web');
@@ -80,7 +67,6 @@ export async function measureLightLevel(): Promise<number | null> {
   }
 
   try {
-    // Verifica se o sensor está disponível
     const available = await LightSensor.isAvailableAsync();
     if (!available) {
       console.log('Sensor de luz não disponível neste dispositivo');
@@ -89,7 +75,6 @@ export async function measureLightLevel(): Promise<number | null> {
 
     return new Promise((resolve) => {
       const subscription = LightSensor.addListener((data) => {
-        // Retorna o valor em lux
         resolve(Math.round(data.illuminance));
         subscription.remove();
       });
@@ -106,10 +91,6 @@ export async function measureLightLevel(): Promise<number | null> {
   }
 }
 
-/**
- * Mede os dados do acelerômetro
- * Retorna valores de aceleração em x, y, z e magnitude
- */
 export async function measureAccelerometer(): Promise<AccelerometerData | null> {
   if (Platform.OS === 'web') {
     console.log('Acelerômetro não disponível na web');
@@ -124,12 +105,10 @@ export async function measureAccelerometer(): Promise<AccelerometerData | null> 
       return null;
     }
 
-    // Define a taxa de atualização
     Accelerometer.setUpdateInterval(100);
 
     return new Promise((resolve) => {
       const subscription = Accelerometer.addListener((data) => {
-        // Calcula a magnitude do vetor de aceleração
         const magnitude = Math.sqrt(data.x ** 2 + data.y ** 2 + data.z ** 2);
         
         const result: AccelerometerData = {
@@ -155,10 +134,6 @@ export async function measureAccelerometer(): Promise<AccelerometerData | null> 
   }
 }
 
-/**
- * Coleta dados de todos os sensores disponíveis
- * Retorna um objeto com todos os valores
- */
 export async function collectAllSensorData(): Promise<SensorData> {
   console.log('Coletando dados dos sensores...');
 
@@ -175,9 +150,6 @@ export async function collectAllSensorData(): Promise<SensorData> {
   };
 }
 
-/**
- * Formata o nível de ruído para exibição
- */
 export function formatNoiseLevel(db: number | null): string {
   if (db === null) return 'N/A';
   
@@ -187,9 +159,6 @@ export function formatNoiseLevel(db: number | null): string {
   return `${db} dB (Muito Alto)`;
 }
 
-/**
- * Formata o nível de luminosidade para exibição
- */
 export function formatLightLevel(lux: number | null): string {
   if (lux === null) return 'N/A';
   
@@ -199,13 +168,9 @@ export function formatLightLevel(lux: number | null): string {
   return `${lux} lux (Muito Claro)`;
 }
 
-/**
- * Formata os dados do acelerômetro para exibição
- */
 export function formatAccelerometer(data: AccelerometerData | null): string {
   if (!data) return 'N/A';
   
-  // Classifica o movimento baseado na magnitude
   let movement = 'Parado';
   if (data.magnitude > 1.2) movement = 'Movimento Leve';
   if (data.magnitude > 2.0) movement = 'Movimento Moderado';

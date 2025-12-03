@@ -1,26 +1,23 @@
 import { View, Text, StyleSheet, TouchableOpacity, ScrollView, Alert } from 'react-native';
 import { MaterialIcons } from '@expo/vector-icons';
 import { router } from 'expo-router';
-import { useLocalAuth } from '@/contexts/LocalAuthContext';
-import { signOutLocal, getAllUsersLocal } from '@/services/local-auth.service';
-import { getWasteLocations } from '@/utils/storage';
+import { useAuth } from '@/contexts/AuthContext';
 import { getCacheStats } from '@/services/cache.service';
 import { getQueueStats } from '@/services/offline-queue.service';
 import { useEffect, useState } from 'react';
 import { ThemedText } from '@/components/themed-text';
 import { ThemedView } from '@/components/themed-view';
+import { useOccurrenceStats } from '@/hooks/useOccurrences';
 
 export default function ProfileScreen() {
-  const { user } = useLocalAuth();
+  const { user, logout } = useAuth();
+  const { stats: occurrenceStats } = useOccurrenceStats();
   const [stats, setStats] = useState({
-    registrations: 0,
     cacheEntries: 0,
     queuePending: 0,
-    totalUsers: 0,
-    myRegistrations: 0,
   });
 
-  const isAdmin = user?.isAdmin === true;
+  const isAdmin = false; // Remover sistema de admin local
 
   useEffect(() => {
     loadStats();
@@ -28,37 +25,13 @@ export default function ProfileScreen() {
 
   const loadStats = async () => {
     try {
-      const locations = await getWasteLocations();
       const queueStats = await getQueueStats();
-
-      // Conta apenas os registros do usuário atual
-      const myRegistrations = locations.length;
-
-      // Dados básicos para todos
-      const basicStats = {
-        myRegistrations,
+      const cacheStats = await getCacheStats();
+      
+      setStats({
+        cacheEntries: cacheStats.entries,
         queuePending: queueStats.pending,
-      };
-
-      // Dados adicionais apenas para admin
-      if (isAdmin) {
-        const cacheStats = await getCacheStats();
-        const allUsers = await getAllUsersLocal();
-        
-        setStats({
-          ...basicStats,
-          registrations: locations.length,
-          cacheEntries: cacheStats.entries,
-          totalUsers: allUsers.length,
-        });
-      } else {
-        setStats({
-          ...basicStats,
-          registrations: 0,
-          cacheEntries: 0,
-          totalUsers: 0,
-        });
-      }
+      });
     } catch (error) {
       console.error('Erro ao carregar estatísticas:', error);
     }
@@ -74,26 +47,11 @@ export default function ProfileScreen() {
           text: 'Sair',
           style: 'destructive',
           onPress: async () => {
-            await signOutLocal();
+            await logout();
             router.replace('/login');
           },
         },
       ]
-    );
-  };
-
-  const showAllUsers = async () => {
-    if (!isAdmin) {
-      Alert.alert('Acesso Negado', 'Apenas administradores podem ver todos os usuários');
-      return;
-    }
-    
-    const users = await getAllUsersLocal();
-    const userList = users.map(u => `• ${u.displayName} (${u.email})`).join('\n');
-    Alert.alert(
-      `Total: ${users.length} usuário(s)`,
-      userList || 'Nenhum usuário cadastrado',
-      [{ text: 'OK' }]
     );
   };
 
@@ -115,13 +73,7 @@ export default function ProfileScreen() {
             color={isAdmin ? "#FF9800" : "#4CAF50"} 
           />
         </View>
-        {isAdmin && (
-          <View style={styles.adminBadge}>
-            <MaterialIcons name="verified" size={16} color="#FF9800" />
-            <Text style={styles.adminBadgeText}>ADMINISTRADOR</Text>
-          </View>
-        )}
-        <ThemedText style={styles.name}>{user.displayName}</ThemedText>
+        <ThemedText style={styles.name}>{user.fullName}</ThemedText>
         <ThemedText style={styles.email}>{user.email}</ThemedText>
         <ThemedText style={styles.date}>
           Membro desde {new Date(user.createdAt).toLocaleDateString('pt-BR')}
@@ -129,38 +81,32 @@ export default function ProfileScreen() {
       </ThemedView>
 
       <ThemedView style={styles.section}>
-        <ThemedText style={styles.sectionTitle}>
-          📊 {isAdmin ? 'Estatísticas do Sistema' : 'Minhas Estatísticas'}
-        </ThemedText>
+        <ThemedText style={styles.sectionTitle}>📊 Estatísticas</ThemedText>
         
         <View style={styles.statsGrid}>
           <View style={styles.statCard}>
-            <MaterialIcons name="delete-outline" size={32} color="#4CAF50" />
-            <ThemedText style={styles.statNumber}>{stats.myRegistrations}</ThemedText>
-            <ThemedText style={styles.statLabel}>Meus Registros</ThemedText>
-          </View>
-
-          <View style={styles.statCard}>
-            <MaterialIcons name="sync" size={32} color="#FF9800" />
-            <ThemedText style={styles.statNumber}>{stats.queuePending}</ThemedText>
+            <MaterialIcons name="pending" size={32} color="#FF9800" />
+            <ThemedText style={styles.statNumber}>{occurrenceStats?.pending || 0}</ThemedText>
             <ThemedText style={styles.statLabel}>Pendentes</ThemedText>
           </View>
 
-          {isAdmin && (
-            <>
-              <View style={styles.statCard}>
-                <MaterialIcons name="storage" size={32} color="#2196F3" />
-                <ThemedText style={styles.statNumber}>{stats.cacheEntries}</ThemedText>
-                <ThemedText style={styles.statLabel}>Cache</ThemedText>
-              </View>
+          <View style={styles.statCard}>
+            <MaterialIcons name="build" size={32} color="#2196F3" />
+            <ThemedText style={styles.statNumber}>{occurrenceStats?.inProgress || 0}</ThemedText>
+            <ThemedText style={styles.statLabel}>Em Progresso</ThemedText>
+          </View>
 
-              <View style={styles.statCard}>
-                <MaterialIcons name="people" size={32} color="#9C27B0" />
-                <ThemedText style={styles.statNumber}>{stats.totalUsers}</ThemedText>
-                <ThemedText style={styles.statLabel}>Usuários</ThemedText>
-              </View>
-            </>
-          )}
+          <View style={styles.statCard}>
+            <MaterialIcons name="check-circle" size={32} color="#4CAF50" />
+            <ThemedText style={styles.statNumber}>{occurrenceStats?.resolved || 0}</ThemedText>
+            <ThemedText style={styles.statLabel}>Resolvidas</ThemedText>
+          </View>
+
+          <View style={styles.statCard}>
+            <MaterialIcons name="report" size={32} color="#9C27B0" />
+            <ThemedText style={styles.statNumber}>{occurrenceStats?.total || 0}</ThemedText>
+            <ThemedText style={styles.statLabel}>Total</ThemedText>
+          </View>
         </View>
       </ThemedView>
 
@@ -172,7 +118,7 @@ export default function ProfileScreen() {
             <MaterialIcons name="badge" size={20} color="#666" />
             <View style={styles.infoContent}>
               <ThemedText style={styles.infoLabel}>ID</ThemedText>
-              <ThemedText style={styles.infoValue}>{user.uid}</ThemedText>
+              <ThemedText style={styles.infoValue}>{user.id}</ThemedText>
             </View>
           </View>
 
@@ -188,9 +134,19 @@ export default function ProfileScreen() {
             <MaterialIcons name="person" size={20} color="#666" />
             <View style={styles.infoContent}>
               <ThemedText style={styles.infoLabel}>Nome</ThemedText>
-              <ThemedText style={styles.infoValue}>{user.displayName}</ThemedText>
+              <ThemedText style={styles.infoValue}>{user.fullName}</ThemedText>
             </View>
           </View>
+
+          {user.phone && (
+            <View style={styles.infoRow}>
+              <MaterialIcons name="phone" size={20} color="#666" />
+              <View style={styles.infoContent}>
+                <ThemedText style={styles.infoLabel}>Telefone</ThemedText>
+                <ThemedText style={styles.infoValue}>{user.phone}</ThemedText>
+              </View>
+            </View>
+          )}
 
           <View style={styles.infoRow}>
             <MaterialIcons name="event" size={20} color="#666" />
@@ -206,17 +162,6 @@ export default function ProfileScreen() {
 
       <ThemedView style={styles.section}>
         <ThemedText style={styles.sectionTitle}>⚙️ Ações</ThemedText>
-
-        {isAdmin && (
-          <TouchableOpacity
-            style={styles.actionButton}
-            onPress={showAllUsers}
-          >
-            <MaterialIcons name="people" size={24} color="#2196F3" />
-            <ThemedText style={styles.actionText}>Ver Todos os Usuários</ThemedText>
-            <MaterialIcons name="chevron-right" size={24} color="#999" />
-          </TouchableOpacity>
-        )}
 
         <TouchableOpacity
           style={styles.actionButton}
@@ -239,7 +184,7 @@ export default function ProfileScreen() {
 
       <View style={styles.footer}>
         <ThemedText style={styles.footerText}>
-          CleanCity v1.0.0 - Modo Local
+          CleanCity v1.0.0 - API Integrada
         </ThemedText>
       </View>
     </ScrollView>

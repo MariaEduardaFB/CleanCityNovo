@@ -14,7 +14,6 @@ export interface WasteLocation {
     longitude: number;
   };
   timestamp: string;
-  // Dados dos sensores
   noiseLevel?: number | null;
   lightLevel?: number | null;
   accelerometer?: AccelerometerData | null;
@@ -27,11 +26,9 @@ export const saveWasteLocation = async (
 ): Promise<void> => {
   try {
     console.log('💾 Iniciando salvamento de localização...');
-    // Buscar locais existentes
     const existingData = await getWasteLocations();
     console.log('📋 Dados existentes:', existingData.length, 'locais');
 
-    // Criar novo local com ID único e timestamp
     const newLocation: WasteLocation = {
       id: Date.now().toString(),
       timestamp: new Date().toISOString(),
@@ -40,11 +37,9 @@ export const saveWasteLocation = async (
 
     console.log('✨ Novo local criado:', newLocation);
 
-    // Adicionar novo local à lista
     const updatedData = [...existingData, newLocation];
     console.log('📊 Total após adição:', updatedData.length, 'locais');
 
-    // Salvar no AsyncStorage
     await AsyncStorage.setItem(
       WASTE_LOCATIONS_KEY,
       JSON.stringify(updatedData)

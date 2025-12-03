@@ -19,14 +19,12 @@ export function LocalAuthProvider({ children }: { children: React.ReactNode }) {
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    // Listener de mudanças no estado de autenticação
     const unsubscribe = onAuthStateChangeLocal((user) => {
       console.log('🔐 Auth state changed (local):', user ? user.email : 'No user');
       setUser(user);
       setLoading(false);
     });
 
-    // Cleanup
     return () => {
       unsubscribe();
     };

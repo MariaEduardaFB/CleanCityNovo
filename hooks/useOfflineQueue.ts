@@ -45,7 +45,6 @@ export function useOfflineQueue(
     return () => clearInterval(interval);
   }, [refreshStats]);
 
-  // Auto-processa quando voltar online
   useEffect(() => {
     if (isOnline && stats.pending > 0 && processor) {
       process();

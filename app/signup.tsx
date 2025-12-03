@@ -12,10 +12,11 @@ import {
   ScrollView,
 } from 'react-native';
 import { ThemedText } from '@/components/themed-text';
-import { signUpLocal } from '@/services/local-auth.service';
+import { useAuth } from '@/contexts/AuthContext';
 import { styles } from './styles/auth.styles';
 
 export default function SignUpScreen() {
+  const { signup } = useAuth();
   const [name, setName] = useState('');
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
@@ -58,7 +59,7 @@ export default function SignUpScreen() {
 
     setIsLoading(true);
     try {
-      await signUpLocal(email.trim(), password, name.trim());
+      await signup(email.trim(), password, name.trim());
       Alert.alert(
         'Sucesso!',
         'Conta criada com sucesso!',
