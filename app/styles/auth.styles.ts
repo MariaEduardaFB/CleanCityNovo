@@ -18,8 +18,7 @@ export const styles = StyleSheet.create({
     fontSize: 36,
     fontWeight: '700',
     color: '#1a1a1a',
-    marginTop: 16,
-    marginBottom: 8,
+    lineHeight: 40,
   },
   subtitle: {
     fontSize: 16,
