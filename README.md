@@ -212,10 +212,6 @@ export const API_CONFIG = {
 4. Push: `git push origin feature/MinhaFeature`
 5. Abra um Pull Request
 
-## 📄 Licença
-
-MIT License - veja LICENSE para detalhes.
-
 ## 📧 Contato
 
 - **GitHub**: https://github.com/MariaEduardaFB
