@@ -40,7 +40,7 @@ export function useOfflineQueue(
 
   useEffect(() => {
     refreshStats();
-    const interval = setInterval(refreshStats, 5000); // Atualiza a cada 5s
+    const interval = setInterval(refreshStats, 5000);
 
     return () => clearInterval(interval);
   }, [refreshStats]);

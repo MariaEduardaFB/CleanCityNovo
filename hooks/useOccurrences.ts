@@ -25,8 +25,10 @@ export function useOccurrences() {
       } else {
         setError(response.error?.message || 'Erro ao carregar ocorrências');
       }
+      return response;
     } catch (err: any) {
       setError(err.message);
+      return { success: false, data: [], error: { message: err.message } };
     } finally {
       setLoading(false);
     }
@@ -44,8 +46,10 @@ export function useOccurrences() {
       } else {
         setError(response.error?.message || 'Erro ao carregar suas ocorrências');
       }
+      return response;
     } catch (err: any) {
       setError(err.message);
+      return { success: false, data: [], error: { message: err.message } };
     } finally {
       setLoading(false);
     }
@@ -63,8 +67,10 @@ export function useOccurrences() {
       } else {
         setError(response.error?.message || 'Erro ao carregar ocorrências');
       }
+      return response;
     } catch (err: any) {
       setError(err.message);
+      return { success: false, data: [], error: { message: err.message } };
     } finally {
       setLoading(false);
     }
