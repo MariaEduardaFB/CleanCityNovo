@@ -1,6 +1,6 @@
 import { Platform } from 'react-native';
 
-const OVERRIDE_API_URL: string | null = 'http://192.168.0.4:3001/api';
+const OVERRIDE_API_URL: string | null = 'http://192.168.0.6:3000/api';
 
 const getApiUrl = () => {
   if (OVERRIDE_API_URL) {
