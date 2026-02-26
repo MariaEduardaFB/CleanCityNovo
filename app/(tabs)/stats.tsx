@@ -8,44 +8,33 @@ import {
   ScrollView,
   TouchableOpacity,
   View,
+  Platform,
+  StatusBar,
+  StyleSheet
 } from 'react-native';
 
 import { ThemedText } from '@/components/themed-text';
-import { ThemedView } from '@/components/themed-view';
 import { useOccurrences } from '@/hooks/useOccurrences';
 import { getWasteLocations } from '@/utils/storage';
-import { styles } from './styles/stats.styles';
+import { useAuth } from '@/contexts/AuthContext';
 
-interface StatCard {
-  title: string;
-  value: string | number;
-  icon: keyof typeof MaterialIcons.glyphMap;
-  color: string;
-  subtitle?: string;
-}
-
-interface SensorStats {
-  avgAccelerometer: number | null;
-  avgLightLevel: number | null;
-  totalWithSensors: number;
-  totalWithLight: number;
-  totalWithAccel: number;
-}
-
-interface RegionStats {
-  [region: string]: number;
-}
+const { width } = Dimensions.get('window');
 
 export default function StatsScreen() {
+  const { user } = useAuth();
   const { occurrences, isLoading, fetchOccurrences } = useOccurrences();
   const [refreshing, setRefreshing] = useState(false);
   const [localOccurrences, setLocalOccurrences] = useState<any[]>([]);
   const [selectedPeriod, setSelectedPeriod] = useState<'today' | 'week' | 'month' | 'all'>('all');
 
   const loadData = useCallback(async () => {
-    await fetchOccurrences();
-    const local = await getWasteLocations();
-    setLocalOccurrences(local);
+    try {
+      await fetchOccurrences();
+      const local = await getWasteLocations();
+      setLocalOccurrences(local || []);
+    } catch (e) {
+      console.error(e);
+    }
   }, [fetchOccurrences]);
 
   useFocusEffect(
@@ -60,357 +49,296 @@ export default function StatsScreen() {
     setRefreshing(false);
   };
 
-  // Filtra por período
   const getFilteredOccurrences = () => {
+    const all = [...occurrences, ...localOccurrences];
+    const unique = Array.from(new Map(all.map(item => [item.id || Math.random(), item])).values());
+    
+    if (selectedPeriod === 'all') return unique;
     const now = new Date();
-    const allOccurrences = [...occurrences, ...localOccurrences];
-
-    return allOccurrences.filter((occ) => {
-      const occDate = new Date(occ.timestamp || occ.createdAt);
-      
-      switch (selectedPeriod) {
-        case 'today':
-          return occDate.toDateString() === now.toDateString();
-        case 'week':
-          const weekAgo = new Date(now.getTime() - 7 * 24 * 60 * 60 * 1000);
-          return occDate >= weekAgo;
-        case 'month':
-          const monthAgo = new Date(now.getTime() - 30 * 24 * 60 * 60 * 1000);
-          return occDate >= monthAgo;
-        default:
-          return true;
-      }
+    return unique.filter((occ) => {
+      const dateStr = occ.createdAt || occ.timestamp;
+      if (!dateStr) return false;
+      const occDate = new Date(dateStr);
+      if (selectedPeriod === 'today') return occDate.toDateString() === now.toDateString();
+      if (selectedPeriod === 'week') return occDate >= new Date(now.getTime() - 7 * 24 * 60 * 60 * 1000);
+      if (selectedPeriod === 'month') return occDate >= new Date(now.getTime() - 30 * 24 * 60 * 60 * 1000);
+      return true;
     });
   };
 
   const filtered = getFilteredOccurrences();
 
-  // Calcula estatísticas de sensores
-  const calculateSensorStats = (): SensorStats => {
-    let totalAccel = 0;
-    let totalLight = 0;
-    let countAccel = 0;
-    let countLight = 0;
+  // IMPACTO (PESSOAL)
+  // Pega o ID real do usuário logado agora
 
-    filtered.forEach((occ) => {
-      // Verifica dados do acelerômetro
-      const accelMagnitude = occ.sensorData?.accelerometer?.magnitude || occ.accelerometerMagnitude;
-      if (accelMagnitude) {
-        totalAccel += accelMagnitude;
-        countAccel++;
-      }
-      
-      // Verifica dados de luz
-      const lightLevel = occ.sensorData?.lightLevel || occ.lightLevel;
-      if (lightLevel) {
-        totalLight += lightLevel;
-        countLight++;
-      }
-    });
+  const currentUserId = user?.uid || user?.id;
 
-    return {
-      avgAccelerometer: countAccel > 0 ? totalAccel / countAccel : null,
-      avgLightLevel: countLight > 0 ? totalLight / countLight : null,
-      totalWithSensors: filtered.filter((o) => o.sensorData || o.accelerometerMagnitude || o.lightLevel).length,
-      totalWithLight: countLight,
-      totalWithAccel: countAccel,
-    };
-  };
+  const myOccurrences = filtered.filter((occ: any) => {
+    if (!currentUserId) return false;
+    const donoDaOcorrencia = occ.userId || occ.authorId || occ.creatorId || occ.user_id;
+    return donoDaOcorrencia && donoDaOcorrencia === currentUserId;
+  });
 
-  // Calcula estatísticas por região (baseado em coordenadas)
-  const calculateRegionStats = (): RegionStats => {
-    const regions: RegionStats = {};
+  const myTotal = myOccurrences.length;
 
-    filtered.forEach((occ) => {
-      // Verifica se a ocorrência tem localização válida
-      const lat = occ.location?.latitude || occ.latitude;
-      const lng = occ.location?.longitude || occ.longitude;
-      
-      if (lat && lng) {
-        // Agrupa por "região" usando a parte inteira das coordenadas
-        const regionKey = `${Math.floor(lat)},${Math.floor(lng)}`;
-        regions[regionKey] = (regions[regionKey] || 0) + 1;
-      }
-    });
+  // IMPACTO DA CIDADE (GLOBAL)
+  const total = filtered.length;
 
-    return regions;
-  };
+  // FOTOOO
 
-  // Calcula estatísticas por status
-  const calculateStatusStats = () => {
-    const statusCount = {
-      pending: 0,
-      verified: 0,
-      resolved: 0,
-    };
+  const withPhotos = filtered.filter((occ: any) => {
+    if (!occ.photos) return false;
 
-    filtered.forEach((occ) => {
-      const status = occ.status?.toLowerCase() || 'pending';
-      if (status in statusCount) {
-        statusCount[status as keyof typeof statusCount]++;
-      }
-    });
+    if (Array.isArray(occ.photos)) {
+      return occ.photos.length > 0 && occ.photos[0] !== null && occ.photos[0] !== "";
+    }
+    
+    if (typeof occ.photos === 'string') {
+      return occ.photos.length > 5; 
+    }
 
-    return statusCount;
-  };
+    return false;
+  }).length;
 
-  // Calcula tendência (comparação com período anterior)
-  const calculateTrend = (): number => {
-    const now = new Date();
-    let currentPeriod = 0;
-    let previousPeriod = 0;
-
-    const allOccurrences = [...occurrences, ...localOccurrences];
-
-    allOccurrences.forEach((occ) => {
-      const occDate = new Date(occ.timestamp || occ.createdAt);
-      const daysDiff = Math.floor((now.getTime() - occDate.getTime()) / (1000 * 60 * 60 * 24));
-
-      if (selectedPeriod === 'today') {
-        if (daysDiff === 0) currentPeriod++;
-        else if (daysDiff === 1) previousPeriod++;
-      } else if (selectedPeriod === 'week') {
-        if (daysDiff <= 7) currentPeriod++;
-        else if (daysDiff <= 14) previousPeriod++;
-      } else if (selectedPeriod === 'month') {
-        if (daysDiff <= 30) currentPeriod++;
-        else if (daysDiff <= 60) previousPeriod++;
-      }
-    });
-
-    if (previousPeriod === 0) return 0;
-    return ((currentPeriod - previousPeriod) / previousPeriod) * 100;
-  };
-
-  const sensorStats = calculateSensorStats();
-  const regionStats = calculateRegionStats();
-  const statusStats = calculateStatusStats();
-  const trend = calculateTrend();
-  const topRegions = Object.entries(regionStats)
-    .sort(([, a], [, b]) => b - a)
-    .slice(0, 5);
-
-  // Cards principais
-  const mainCards: StatCard[] = [
-    {
-      title: 'Total de Ocorrências',
-      value: filtered.length,
-      icon: 'report',
-      color: '#007AFF',
-      subtitle: trend !== 0 ? `${trend > 0 ? '+' : ''}${trend.toFixed(1)}% vs período anterior` : undefined,
-    },
-    {
-      title: 'Com Dados de Sensores',
-      value: sensorStats.totalWithSensors,
-      icon: 'sensors',
-      color: '#34C759',
-      subtitle: `${((sensorStats.totalWithSensors / (filtered.length || 1)) * 100).toFixed(0)}% do total`,
-    },
-    {
-      title: 'Resolvidas',
-      value: statusStats.resolved,
-      icon: 'check-circle',
-      color: '#32D74B',
-      subtitle: `${statusStats.pending} pendentes`,
-    },
-    {
-      title: 'Regiões Ativas',
-      value: Object.keys(regionStats).length,
-      icon: 'location-on',
-      color: '#FF9500',
-      subtitle: topRegions[0] ? `Top: ${topRegions[0][1]} ocorrências` : undefined,
-    },
-  ];
-
-  // Cards de sensores
-  const sensorCards: StatCard[] = [
-    {
-      title: 'Movimento Médio',
-      value: sensorStats.avgAccelerometer
-        ? `${sensorStats.avgAccelerometer.toFixed(2)} m/s²`
-        : 'N/A',
-      icon: 'vibration',
-      color: '#5856D6',
-      subtitle: `${sensorStats.totalWithAccel} leituras`,
-    },
-    {
-      title: 'Luminosidade Média',
-      value: sensorStats.avgLightLevel
-        ? `${sensorStats.avgLightLevel.toFixed(0)} lx`
-        : 'N/A',
-      icon: 'light-mode',
-      color: '#FFD60A',
-      subtitle: `${sensorStats.totalWithLight} leituras`,
-    },
-    {
-      title: 'Com Fotos',
-      value: filtered.filter((o) => o.photos && o.photos.length > 0).length,
-      icon: 'photo-camera',
-      color: '#FF375F',
-      subtitle: `${(
-        (filtered.filter((o) => o.photos && o.photos.length > 0).length / (filtered.length || 1)) *
-        100
-      ).toFixed(0)}% do total`,
-    },
-  ];
-
-  if (isLoading && filtered.length === 0) {
+  if (isLoading && total === 0) {
     return (
-      <ThemedView style={styles.loadingContainer}>
-        <ActivityIndicator size="large" color="#007AFF" />
-        <ThemedText style={styles.loadingText}>Carregando estatísticas...</ThemedText>
-      </ThemedView>
+      <View style={styles.center}>
+        <ActivityIndicator size="large" color="#1e3c72" />
+      </View>
     );
   }
 
   return (
-    <ThemedView style={styles.container}>
+    <View style={styles.container}>
+      <StatusBar barStyle="light-content" backgroundColor="#1e3c72" translucent={false} />
+      
+      {/* HEADER PROPORCIONAL */}
+      <View style={styles.header}>
+        <View style={styles.headerContent}>
+          <ThemedText style={styles.headerTitle}>📊 Estatísticas</ThemedText>
+          <View style={styles.occurrenceBadge}>
+            <ThemedText style={styles.occurrenceBadgeText}>{total} Registros na Cidade</ThemedText>
+          </View>
+        </View>
+      </View>
+
       <ScrollView
-        style={styles.scrollView}
-        contentContainerStyle={styles.scrollContent}
+        style={styles.content}
+        contentContainerStyle={{ paddingBottom: 40 }}
         refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} />}
         showsVerticalScrollIndicator={false}
       >
-        {/* Header */}
-        <View style={styles.header}>
-          <ThemedText style={styles.title}>📊 Estatísticas</ThemedText>
-          <ThemedText style={styles.subtitle}>Dados colaborativos em tempo real</ThemedText>
-        </View>
-
-        {/* Filtros de Período */}
-        <ScrollView
-          horizontal
-          showsHorizontalScrollIndicator={false}
-          style={styles.periodFilters}
-          contentContainerStyle={styles.periodFiltersContent}
-        >
-          {['today', 'week', 'month', 'all'].map((period) => (
-            <TouchableOpacity
-              key={period}
-              style={[
-                styles.periodButton,
-                selectedPeriod === period && styles.periodButtonActive,
-              ]}
-              onPress={() => setSelectedPeriod(period as any)}
-            >
-              <ThemedText
-                style={[
-                  styles.periodButtonText,
-                  selectedPeriod === period && styles.periodButtonTextActive,
-                ]}
+        {/* FILTROS DOSS PERÍODOS */}
+        <View style={styles.filterSection}>
+          <ThemedText style={styles.sectionLabel}>Período de análise:</ThemedText>
+          <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.filterScroll}>
+            {['today', 'week', 'month', 'all'].map((p) => (
+              <TouchableOpacity
+                key={p}
+                onPress={() => setSelectedPeriod(p as any)}
+                style={[styles.filterBtn, selectedPeriod === p && styles.filterBtnActive]}
               >
-                {period === 'today' && 'Hoje'}
-                {period === 'week' && 'Semana'}
-                {period === 'month' && 'Mês'}
-                {period === 'all' && 'Tudo'}
-              </ThemedText>
-            </TouchableOpacity>
-          ))}
-        </ScrollView>
-
-        {/* Cards Principais */}
-        <View style={styles.section}>
-          <ThemedText style={styles.sectionTitle}>Visão Geral</ThemedText>
-          <View style={styles.cardsGrid}>
-            {mainCards.map((card, index) => (
-              <View key={index} style={styles.card}>
-                <View style={[styles.cardIcon, { backgroundColor: card.color + '20' }]}>
-                  <MaterialIcons name={card.icon} size={24} color={card.color} />
-                </View>
-                <View style={styles.cardContent}>
-                  <ThemedText style={styles.cardTitle}>{card.title}</ThemedText>
-                  <ThemedText style={styles.cardValue}>{card.value}</ThemedText>
-                  {card.subtitle && (
-                    <ThemedText style={styles.cardSubtitle}>{card.subtitle}</ThemedText>
-                  )}
-                </View>
-              </View>
+                <ThemedText style={[styles.filterBtnText, selectedPeriod === p && styles.filterBtnTextActive]}>
+                  {p === 'today' ? 'Hoje' : p === 'week' ? 'Semana' : p === 'month' ? 'Mês' : 'Geral'}
+                </ThemedText>
+              </TouchableOpacity>
             ))}
+          </ScrollView>
+        </View>
+
+        {/* USUÁRIO LOGADO */}
+        <View style={styles.personalImpactContainer}>
+          <View style={styles.personalImpactHeader}>
+            <MaterialIcons name="stars" size={24} color="#FFD700" />
+            <ThemedText style={styles.personalImpactTitle}>Seu Impacto</ThemedText>
           </View>
-        </View>
-
-        {/* Cards de Sensores */}
-        <View style={styles.section}>
-          <ThemedText style={styles.sectionTitle}>Dados dos Sensores</ThemedText>
-          <View style={styles.cardsGrid}>
-            {sensorCards.map((card, index) => (
-              <View key={index} style={styles.card}>
-                <View style={[styles.cardIcon, { backgroundColor: card.color + '20' }]}>
-                  <MaterialIcons name={card.icon} size={24} color={card.color} />
-                </View>
-                <View style={styles.cardContent}>
-                  <ThemedText style={styles.cardTitle}>{card.title}</ThemedText>
-                  <ThemedText style={styles.cardValue}>{card.value}</ThemedText>
-                  {card.subtitle && (
-                    <ThemedText style={styles.cardSubtitle}>{card.subtitle}</ThemedText>
-                  )}
-                </View>
-              </View>
-            ))}
-          </View>
-        </View>
-
-        {/* Top Regiões */}
-        <View style={styles.section}>
-          <ThemedText style={styles.sectionTitle}>Top 5 Regiões</ThemedText>
-          {topRegions.length > 0 ? (
-            topRegions.map(([region, count], index) => (
-              <View key={region} style={styles.regionItem}>
-                <View style={styles.regionRank}>
-                  <ThemedText style={styles.regionRankText}>{index + 1}</ThemedText>
-                </View>
-                <View style={styles.regionInfo}>
-                  <ThemedText style={styles.regionName}>Região {region}</ThemedText>
-                  <View style={styles.regionBar}>
-                    <View
-                      style={[
-                        styles.regionBarFill,
-                        {
-                          width: `${(count / topRegions[0][1]) * 100}%`,
-                          backgroundColor: '#007AFF',
-                        },
-                      ]}
-                    />
-                  </View>
-                </View>
-                <ThemedText style={styles.regionCount}>{count}</ThemedText>
-              </View>
-            ))
-          ) : (
-            <ThemedText style={styles.emptyText}>Nenhum dado disponível</ThemedText>
-          )}
-        </View>
-
-        {/* Distribuição por Status */}
-        <View style={styles.section}>
-          <ThemedText style={styles.sectionTitle}>Status das Ocorrências</ThemedText>
-          <View style={styles.statusContainer}>
-            <View style={styles.statusItem}>
-              <View style={[styles.statusDot, { backgroundColor: '#FF9500' }]} />
-              <ThemedText style={styles.statusLabel}>Pendentes</ThemedText>
-              <ThemedText style={styles.statusValue}>{statusStats.pending}</ThemedText>
+          <View style={styles.personalCard}>
+            <View style={styles.personalCardLeft}>
+              <ThemedText style={styles.personalCardNumber}>{myTotal}</ThemedText>
+              <ThemedText style={styles.personalCardText}>Problemas relatados por você</ThemedText>
             </View>
-            <View style={styles.statusItem}>
-              <View style={[styles.statusDot, { backgroundColor: '#007AFF' }]} />
-              <ThemedText style={styles.statusLabel}>Verificadas</ThemedText>
-              <ThemedText style={styles.statusValue}>{statusStats.verified}</ThemedText>
-            </View>
-            <View style={styles.statusItem}>
-              <View style={[styles.statusDot, { backgroundColor: '#34C759' }]} />
-              <ThemedText style={styles.statusLabel}>Resolvidas</ThemedText>
-              <ThemedText style={styles.statusValue}>{statusStats.resolved}</ThemedText>
+            <View style={styles.personalCardRight}>
+              <MaterialIcons name="emoji-events" size={40} color="#00D084" />
             </View>
           </View>
         </View>
 
-        {/* Footer Info */}
-        <View style={styles.footer}>
-          <MaterialIcons name="info-outline" size={16} color="#8E8E93" />
-          <ThemedText style={styles.footerText}>
-            Dados atualizados em tempo real • {filtered.length} ocorrências analisadas
-          </ThemedText>
+        {/* REGISTROS DA COMUNIDADE */}
+        <View style={styles.globalImpactContainer}>
+          <ThemedText style={styles.sectionLabel}>Impacto da Comunidade (Global)</ThemedText>
+          <View style={styles.grid}>
+            <StatCard label="Total Geral" value={total} icon="analytics" color="#1e3c72" />
+            <StatCard label="Com Fotos" value={withPhotos} icon="camera-alt" color="#ff4757" />
+            <StatCard label="Locais Únicos" value={new Set(filtered.map(o => o.latitude)).size} icon="map" color="#ffa502" />
+            <StatCard label="Eficiência" value={`${((withPhotos / (total || 1)) * 100).toFixed(0)}%`} icon="bolt" color="#2ed573" />
+          </View>
+        </View>
+
+        <View style={styles.infoFooter}>
+          <MaterialIcons name="sync" size={18} color="#747d8c" />
+          <ThemedText style={styles.infoFooterText}>Dados sincronizados com o servidor central</ThemedText>
         </View>
       </ScrollView>
-    </ThemedView>
+    </View>
   );
 }
+
+function StatCard({ label, value, icon, color }: any) {
+  return (
+    <View style={styles.card}>
+      <View style={[styles.iconWrapper, { backgroundColor: color + '15' }]}>
+        <MaterialIcons name={icon} size={28} color={color} />
+      </View>
+      <ThemedText style={styles.cardValue}>{value}</ThemedText>
+      <ThemedText style={styles.cardLabel}>{label}</ThemedText>
+    </View>
+  );
+}
+
+const styles = StyleSheet.create({
+  container: { flex: 1, backgroundColor: '#f4f6f9' },
+  center: { flex: 1, justifyContent: 'center', alignItems: 'center' },
+  header: {
+    backgroundColor: '#1e3c72',
+    paddingTop: Platform.OS === 'ios' ? 60 : 40,
+    paddingBottom: 30,
+    borderBottomLeftRadius: 30,
+    borderBottomRightRadius: 30,
+    elevation: 6,
+    shadowColor: '#000',
+    shadowOpacity: 0.15,
+    shadowRadius: 8,
+  },
+  headerContent: {
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  headerTitle: {
+    fontSize: 26,
+    fontWeight: 'bold',
+    color: '#fff',
+    marginBottom: 10,
+    lineHeight: 34,
+  },
+  occurrenceBadge: {
+    backgroundColor: 'rgba(255,255,255,0.15)',
+    paddingHorizontal: 16,
+    paddingVertical: 6,
+    borderRadius: 20,
+    borderWidth: 1,
+    borderColor: 'rgba(255,255,255,0.3)',
+  },
+  occurrenceBadgeText: {
+    color: '#fff',
+    fontSize: 14,
+    fontWeight: 'bold',
+    lineHeight: 20,
+  },
+  content: { flex: 1 },
+  
+  filterSection: { marginTop: 20, marginBottom: 15 },
+  sectionLabel: { 
+    marginLeft: 20, 
+    fontSize: 16, 
+    color: '#1e3c72', 
+    marginBottom: 12, 
+    fontWeight: 'bold' 
+  },
+  filterScroll: { paddingLeft: 20 },
+  filterBtn: {
+    paddingHorizontal: 20,
+    paddingVertical: 10,
+    borderRadius: 12,
+    backgroundColor: '#fff',
+    marginRight: 12,
+    elevation: 2,
+    borderWidth: 1,
+    borderColor: '#e2e8f0',
+  },
+  filterBtnActive: { backgroundColor: '#1e3c72', borderColor: '#1e3c72' },
+  filterBtnText: { color: '#64748b', fontWeight: 'bold', fontSize: 13 },
+  filterBtnTextActive: { color: '#fff' },
+  
+  personalImpactContainer: {
+    marginHorizontal: 20,
+    marginBottom: 25,
+  },
+  personalImpactHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginBottom: 10,
+    gap: 8,
+  },
+  personalImpactTitle: {
+    fontSize: 16,
+    fontWeight: 'bold',
+    color: '#b8860b',
+  },
+  personalCard: {
+    flexDirection: 'row',
+    backgroundColor: '#fff',
+    padding: 20,
+    borderRadius: 20,
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    elevation: 4,
+    shadowColor: '#000',
+    shadowOpacity: 0.05,
+    shadowRadius: 6,
+    borderLeftWidth: 5,
+    borderLeftColor: '#00D084',
+  },
+  personalCardLeft: {
+    flex: 1,
+  },
+  personalCardNumber: {
+    fontSize: 25,
+    fontWeight: 'bold',
+    color: '#1e293b',
+    marginBottom: 5,
+  },
+  personalCardText: {
+    fontSize: 14,
+    color: '#64748b',
+    fontWeight: '500',
+  },
+  personalCardRight: {
+    backgroundColor: 'rgba(0, 208, 132, 0.1)',
+    padding: 15,
+    borderRadius: 20,
+  },
+
+  globalImpactContainer: {
+    marginTop: 10,
+  },
+  grid: {
+    paddingHorizontal: 20,
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    justifyContent: 'space-between',
+  },
+  card: {
+    backgroundColor: '#fff',
+    width: (width / 2) - 28,
+    padding: 20,
+    borderRadius: 24,
+    marginBottom: 16,
+    alignItems: 'center',
+    elevation: 3,
+    shadowColor: '#000',
+    shadowOpacity: 0.05,
+    shadowRadius: 6,
+  },
+  iconWrapper: { padding: 14, borderRadius: 18, marginBottom: 12 },
+  cardValue: { fontSize: 28, fontWeight: 'bold', color: '#1e293b', lineHeight: 34 },
+  cardLabel: { fontSize: 13, color: '#64748b', fontWeight: '600' },
+  
+  infoFooter: {
+    flexDirection: 'row',
+    justifyContent: 'center',
+    alignItems: 'center',
+    gap: 8,
+    paddingVertical: 10,
+  },
+  infoFooterText: { fontSize: 13, color: '#64748b', fontWeight: '500' }
+});
