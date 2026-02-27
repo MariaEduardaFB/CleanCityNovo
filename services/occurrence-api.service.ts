@@ -8,6 +8,10 @@ export interface CreateOccurrenceData {
   longitude: number;
   address?: string;
   category?: string;
+  photos?: string[];
+  accelerometerX?: number;
+  accelerometerY?: number;
+  accelerometerZ?: number;
 }
 
 export interface UpdateOccurrenceData {
