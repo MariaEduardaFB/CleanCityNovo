@@ -2,10 +2,6 @@ import { useEffect } from 'react';
 import { View, Button, Alert } from 'react-native';
 import { ThemedText } from '@/components/themed-text';
 
-/**
- * Tela de teste de conexão com a API
- * Use isso para debugar problemas de rede
- */
 export default function TestApiScreen() {
   useEffect(() => {
     console.log('🧪 Tela de teste carregada');
