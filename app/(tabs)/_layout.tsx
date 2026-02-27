@@ -21,7 +21,7 @@ export default function TabLayout() {
           height: 85, 
         },
         tabBarLabelStyle: {
-          fontSize: 12,
+          fontSize: 10,
           fontWeight: '600',
           marginTop: 4,
         },
@@ -32,7 +32,7 @@ export default function TabLayout() {
         options={{
           title: 'Registrar',
           tabBarIcon: ({ color }) => (
-            <MaterialIcons name="add-circle" size={28} color={color} />
+            <MaterialIcons name="add-circle" size={26} color={color} />
           ),
         }}
       />
@@ -41,7 +41,7 @@ export default function TabLayout() {
         options={{
           title: 'Mapa',
           tabBarIcon: ({ color }) => (
-            <MaterialIcons name="map" size={28} color={color} />
+            <MaterialIcons name="map" size={26} color={color} />
           ),
         }}
       />
@@ -50,28 +50,41 @@ export default function TabLayout() {
         options={{
           title: 'Lista',
           tabBarIcon: ({ color }) => (
-            <MaterialIcons name="list" size={28} color={color} />
+            <MaterialIcons name="list" size={26} color={color} />
           ),
         }}
       />
+         
+      <Tabs.Screen
+        name="classify"
+        options={{
+          title: 'Scanner',
+          tabBarIcon: ({ color }) => (
+            <MaterialIcons name="qr-code-scanner" size={26} color={color} />
+          ),
+        }}
+      />
+
       <Tabs.Screen
         name="stats"
         options={{
           title: 'Estatísticas',
           tabBarIcon: ({ color }) => (
-            <MaterialIcons name="bar-chart" size={28} color={color} />
+            <MaterialIcons name="bar-chart" size={26} color={color} />
           ),
         }}
       />
-      <Tabs.Screen
+
+<Tabs.Screen
         name="profile"
         options={{
           title: 'Perfil',
           tabBarIcon: ({ color }) => (
-            <MaterialIcons name="person" size={28} color={color} />
+            <MaterialIcons name="person" size={26} color={color} />
           ),
         }}
       />
+
       <Tabs.Screen
         name="explore"
         options={{
